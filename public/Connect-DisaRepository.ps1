@@ -24,7 +24,7 @@ function Connect-DisaRepository {
         }
 
         $global:repoid = $global:repos[$Repository]
-        $PSDefaultParameterValues["Invoke-*:CertificateThumbprint"] = $Thumbprint
+        $PSDefaultParameterValues["Invoke-*:CertificateThumbprint"] = $global:certthumbprint
         $loginurl = "https://patches.csd.disa.mil/PkiLogin/Default.aspx"
 
         try {
