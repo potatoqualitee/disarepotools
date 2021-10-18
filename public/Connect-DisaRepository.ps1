@@ -19,6 +19,8 @@ function Connect-DisaRepository {
     process {
         if (-not $Thumbprint) {
             throw "Certificate thumbprint could not be automatically determined. Please use Connect-DisaRepository -Thumbprint to specify the desired certificate."
+        } else {
+            $global:certthumbprint = $Thumbprint
         }
 
         $global:repoid = $global:repos[$Repository]
@@ -27,7 +29,7 @@ function Connect-DisaRepository {
 
         try {
             Write-Verbose "Logging in to $Repository with Thumbprint $Thumbprint"
-            $null = Invoke-WebRequest -Uri $loginurl -SessionVariable global:disalogin
+            $null = Invoke-WebRequest -Uri $loginurl -SessionVariable global:disalogin -WebSession $null
         } catch {
             $global:disalogin = $null
             throw $PSItem
@@ -62,6 +64,7 @@ function Connect-DisaRepository {
             Repository   = $Repository
             RepositoryId = $global:repoid
             TotalRows    = $global:totalrows
+            Thumbprint   = $global:certthumbprint
             Status       = "Connected"
         }
     }

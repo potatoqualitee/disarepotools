@@ -29,8 +29,6 @@ function Get-DisaFile {
     begin {
         $baselink = "https://patches.csd.disa.mil"
         $pluginbase = "$baselink/Metadata.aspx?id"
-        $PSDefaultParameterValues["Invoke-*:CertificateThumbprint"] = $Thumbprint
-        $PSDefaultParameterValues["Invoke-*:WebSession"] = $global:disalogin
     }
     process {
         if (-not $global:disalogin) {
@@ -40,6 +38,9 @@ function Get-DisaFile {
                 throw "Connection timedout or login failed. Please connect manually using Connect-DisaRepository."
             }
         }
+
+        $PSDefaultParameterValues["Invoke-*:CertificateThumbprint"] = $global:certthumbprint
+        $PSDefaultParameterValues["Invoke-*:WebSession"] = $global:disalogin
 
         $ProgressPreference = "SilentlyContinue"
 
@@ -133,7 +134,7 @@ function Get-DisaFile {
             }
 
             $downloadfile = $data.links | Where-Object outerHTML -match ".ms|.exe|.tar|.zip"
-            Write-Warning "$(($downloadfile).Count) total download files found"
+            Write-Verbose "$(($downloadfile).Count) total download files found"
             if (-not $downloadfile) {
                 Write-Verbose "No links found, moving on"
                 continue
