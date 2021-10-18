@@ -61,3 +61,7 @@ Register-PSFTeppScriptblock -Name Repository -ScriptBlock { $global:repos.Keys }
 
 # Register the actual auto completer
 Register-PSFTeppArgumentCompleter -Command Connect-DisaRepository -Parameter Repository -Name Repository
+
+$PSDefaultParameterValues["Invoke-*:ErrorAction"] = "Stop"
+$PSDefaultParameterValues["Invoke-*:UseBasicParsing"] = $true
+$PSDefaultParameterValues["Invoke-*:UserAgent"] = ([Microsoft.PowerShell.Commands.PSUserAgent]::InternetExplorer)

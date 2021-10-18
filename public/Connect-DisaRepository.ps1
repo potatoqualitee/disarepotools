@@ -22,19 +22,46 @@ function Connect-DisaRepository {
         }
 
         $global:repoid = $global:repos[$Repository]
-        $PSDefaultParameterValues["Invoke-*:ErrorAction"] = "Stop"
         $PSDefaultParameterValues["Invoke-*:CertificateThumbprint"] = $Thumbprint
-        $PSDefaultParameterValues["Invoke-*:UseBasicParsing"] = $true
-        $PSDefaultParameterValues["Invoke-*:UserAgent"] = ([Microsoft.PowerShell.Commands.PSUserAgent]::InternetExplorer)
         $loginurl = "https://patches.csd.disa.mil/PkiLogin/Default.aspx"
-        $null = Invoke-WebRequest -Uri $loginurl -SessionVariable global:disalogin
 
+        try {
+            Write-Verbose "Logging in to $Repository with Thumbprint $Thumbprint"
+            $null = Invoke-WebRequest -Uri $loginurl -SessionVariable global:disalogin
+        } catch {
+            $global:disalogin = $null
+            throw $PSItem
+        }
+
+        Write-Verbose "Setting global WebSession"
         $PSDefaultParameterValues["Invoke-*:WebSession"] = $global:disalogin
-        $ProgressPreference = "SilentlyContinue"
+
+        $body = [PSCustomObject]@{
+            collectionId = $global:repoid
+            _search      = $false
+            rows         = 15
+            page         = 1
+            filters      = ""
+        }
+
+        $params = @{
+            Uri         = "https://patches.csd.disa.mil/Service/CollectionInfoService.svc/GetAssetsListingOfCollection"
+            Method      = "POST"
+            ContentType = "application/json; charset=UTF-8"
+            Body        = $body | ConvertTo-Json
+        }
+
+        try {
+            Write-Verbose "Getting total records"
+            $global:totalrows = (Invoke-RestMethod @params | ConvertFrom-Json).Total
+        } catch {
+            throw $PSItem
+        }
 
         [PSCustomObject]@{
             Repository   = $Repository
             RepositoryId = $global:repoid
+            TotalRows    = $global:totalrows
             Status       = "Connected"
         }
     }

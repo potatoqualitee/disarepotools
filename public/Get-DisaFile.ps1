@@ -16,38 +16,38 @@ function Get-DisaFile {
         [datetime]$Since,
         [string]$Search,
         [string]$ExcludePattern,
-        [Alias("Limit")]
-        [int]$First,
-        [int]$Last,
-        [int]$Skip,
-        [int]$Page,
+        [Alias("First")]
+        [int]$Limit,
+        [int]$Page = 1,
         [string]$Thumbprint = ([System.Security.Cryptography.X509Certificates.X509Certificate2[]](Get-ChildItem Cert:\CurrentUser\My | Where-Object FriendlyName -like "*Authentication -*") | Select-Object -ExpandProperty Thumbprint),
+        [ValidateSet("Ascending", "Descending")]
+        [string]$Sort,
+        [ValidateSet("TITLE", "CREATED_DATE")]
+        [string]$SortColumn = "TITLE",
         [int]$Force
     )
-    process {
-        if (-not $Thumbprint) {
-            throw "Certificate thumbprint could not be automatically determined. Please use -Thumbprint to specify the desired certificate."
-        }
-
+    begin {
         $baselink = "https://patches.csd.disa.mil"
         $pluginbase = "$baselink/Metadata.aspx?id"
-        $loginurl = "$baselink/PkiLogin/Default.aspx"
-
-        $PSDefaultParameterValues["Invoke-*:ErrorAction"] = "Stop"
         $PSDefaultParameterValues["Invoke-*:CertificateThumbprint"] = $Thumbprint
-        $PSDefaultParameterValues["Invoke-*:UseBasicParsing"] = $true
-        $PSDefaultParameterValues["Invoke-*:UserAgent"] = ([Microsoft.PowerShell.Commands.PSUserAgent]::InternetExplorer)
-
+        $PSDefaultParameterValues["Invoke-*:WebSession"] = $global:disalogin
+    }
+    process {
         if (-not $global:disalogin) {
-            $null = Connect-DisaRepository
+            try {
+                $null = Connect-DisaRepository
+            } catch {
+                throw "Connection timedout or login failed. Please connect manually using Connect-DisaRepository."
+            }
         }
 
-        $PSDefaultParameterValues["Invoke-*:WebSession"] = $global:disalogin
         $ProgressPreference = "SilentlyContinue"
 
-        $issearch = $false
-        $rules = @()
+        if (-not $Limit) {
+            $Limit = $global:totalrows
+        }
 
+        $rules = @()
         if ($Since) {
             $convertedDate = (Get-Date $Since -UFormat %e-%b-%Y).Trim()
             $rules += [PSCustomObject]@{
@@ -59,7 +59,6 @@ function Get-DisaFile {
         }
 
         if ($Search) {
-            $issearch = $true
             $rules += [PSCustomObject]@{
                 field    = "TITLE"
                 op       = "cn"
@@ -77,34 +76,43 @@ function Get-DisaFile {
             $filters = ""
         }
 
-        $body = [PSCustomObject]@{
+        Write-Verbose "Is search: $($Since -or $Search)"
+
+        $body = @{
             collectionId = $global:repoid
-            _search      = $issearch
-            rows         = $First
-            page         = 1
+            _search      = $($Since -or $Search)
+            rows         = $Limit
+            page         = $Page
             filters      = $filters
+        }
+
+        if ($Sort -eq "Ascending") {
+            Write-Verbose "Sorting"
+            if ($Sort -eq "Ascending") {
+                $sortorder = "asc"
+            } else {
+                $sortorder = "desc"
+            }
+            $body.sidx = $SortColumn
+            $body.sord = $sortorder
         }
 
         $params = @{
             Uri         = "$baselink/Service/CollectionInfoService.svc/GetAssetsListingOfCollection"
             Method      = "POST"
             ContentType = "application/json; charset=UTF-8"
-            Body        = $body | ConvertTo-Json
+            Body        = [PSCustomObject]$body | ConvertTo-Json
         }
 
-        if (-not $First) {
-            $body.rows = 15
-            $params.Body = $body | ConvertTo-Json
-            $First = (Invoke-RestMethod @params | ConvertFrom-Json).Total
-            Write-Verbose "Limit set to $First"
-            $body.rows = $First
-            $params.Body = $body | ConvertTo-Json
+        try {
+            Write-Verbose "Getting a list of all assets"
+            $assets = Invoke-RestMethod @params
+        } catch {
+            throw $PSItem
         }
-
-        $assets = Invoke-RestMethod @params
 
         $rows = $assets | ConvertFrom-Json | Select-Object -ExpandProperty Rows
-        Write-Verbose "$($rows.Count) rows returned"
+        Write-Verbose "$(($rows).Count) total rows returned"
 
         foreach ($row in $rows) {
             if ($ExcludePattern) {
@@ -113,18 +121,26 @@ function Get-DisaFile {
                     continue
                 }
             }
+
             $id = $row.STANDARDASSETID
             $link = "$pluginbase=$id"
 
-            $data = Invoke-WebRequest -Uri $link
+            try {
+                Write-Verbose "Finding link"
+                $data = Invoke-WebRequest -Uri $link
+            } catch {
+                throw $PSItem
+            }
 
             $downloadfile = $data.links | Where-Object outerHTML -match ".ms|.exe|.tar|.zip"
-
+            Write-Warning "$(($downloadfile).Count) total download files found"
             if (-not $downloadfile) {
+                Write-Verbose "No links found, moving on"
                 continue
             }
 
             foreach ($file in $downloadfile) {
+                Write-Verbose "Getting detailed information"
                 $downloadlink = ($baselink + ($file.href)).Replace("&amp;", "&")
                 $headers = (Invoke-WebRequest -Uri $downloadlink -Method Head).Headers
 
