@@ -191,8 +191,8 @@ function Get-DisaFile {
                     $filename = $headers.'Content-disposition'.Replace("attachment;filename=", "").Replace("attachment; filename=", "")
                     $size = $headers.'Content-Length' | Select-Object -First 1
                     $temp = [PSCustomObject]@{
-                        filename = "hello"
-                        size     = 1
+                        filename = $filename
+                        size     = $size
                     }
                     $global:disadownload.linkdetails[$downloadlink] = $temp
                 } else {
