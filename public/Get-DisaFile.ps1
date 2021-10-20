@@ -3,13 +3,51 @@
 function Get-DisaFile {
     <#
     .SYNOPSIS
-    Sup
+        Gets a list of downloads available from the DISA Patch Repository
 
     .DESCRIPTION
-    Sup
+        This command a list of downloads available from the DISA Patch Repository
+
+        Smartcard authentication is supported
+
+    .PARAMETER Since
+        List only files since a certain date
+
+    .PARAMETER Search
+        Use Keyword filtering
+
+    .PARAMETER ExcludePattern
+        DISA's site does not support exclusions at this time. Use this to filter out results that
+        are returned from the website
+
+    .PARAMETER Limit
+        Limit the number of files returned. By default, all files are returned.
+
+    .PARAMETER Page
+        Specify the page needed
+
+    .PARAMETER SortOrder
+        The sort order. Options are Descending or Ascending.
+
+    .PARAMETER SortColumn
+        The column to sort by. Options are TITLE or CREATED_DATE. Default is TITLE.
 
     .EXAMPLE
-    Sup
+        PS> Get-DisaFile
+
+    .EXAMPLE
+        PS> $date = (Get-Date).AddDays(-30)
+        PS> Get-DisaFile -Since $date
+
+    .EXAMPLE
+        PS> Get-DisaFile -Limit 3
+
+        Get just the first three files
+
+    .EXAMPLE
+        PS> Get-DisaFile -Search "Windows Server" -ExcludePattern "x86|ARM64" -SortOrder Ascending -Limit 3
+
+        Get just the first three files
     #>
     [CmdletBinding()]
     param (
@@ -19,12 +57,10 @@ function Get-DisaFile {
         [Alias("First")]
         [int]$Limit,
         [int]$Page = 1,
-        [string]$Thumbprint = ([System.Security.Cryptography.X509Certificates.X509Certificate2[]](Get-ChildItem Cert:\CurrentUser\My | Where-Object FriendlyName -like "*Authentication -*") | Select-Object -ExpandProperty Thumbprint),
         [ValidateSet("Ascending", "Descending")]
-        [string]$Sort,
+        [string]$SortOrder,
         [ValidateSet("TITLE", "CREATED_DATE")]
-        [string]$SortColumn = "TITLE",
-        [int]$Force
+        [string]$SortColumn = "TITLE"
     )
     begin {
         $baselink = "https://patches.csd.disa.mil"
@@ -87,9 +123,9 @@ function Get-DisaFile {
             filters      = $filters
         }
 
-        if ($Sort -eq "Ascending") {
+        if ($SortOrder -eq "Ascending") {
             Write-Verbose "Sorting"
-            if ($Sort -eq "Ascending") {
+            if ($SortOrder -eq "Ascending") {
                 $sortorder = "asc"
             } else {
                 $sortorder = "desc"
