@@ -123,15 +123,15 @@ function Get-DisaFile {
             filters      = $filters
         }
 
-        if ($SortOrder -eq "Ascending") {
+        if ($SortOrder) {
             Write-Verbose "Sorting"
             if ($SortOrder -eq "Ascending") {
-                $sortorder = "asc"
+                $sortor = "asc"
             } else {
-                $sortorder = "desc"
+                $sortor = "desc"
             }
             $body.sidx = $SortColumn
-            $body.sord = $sortorder
+            $body.sord = $sortor
         }
 
         $params = @{
