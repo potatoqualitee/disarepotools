@@ -33,7 +33,7 @@
     )
 
     # Script module or binary module file associated with this manifest.
-    RootModule        = 'disadownloaded.psm1'
+    RootModule        = 'disadownload.psm1'
 
     FunctionsToExport = @(
         'Connect-DisaRepository',

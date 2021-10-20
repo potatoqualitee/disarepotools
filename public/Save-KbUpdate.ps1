@@ -13,15 +13,15 @@ function Save-DisaFile {
     #>
     [CmdletBinding()]
     param (
-        [Parameter(ValueFromPipeline)]
+        [Parameter(ValueFromPipelin, Mandatory)]
         [psobject]$InputObject,
         [Alias("FullName")]
         [ValidateScript( { Test-Path -Path $_ } )]
         [string]$Path = $PWD
     )
     begin {
-        $PSDefaultParameterValues["Invoke-*:CertificateThumbprint"] = $global:certthumbprint
-        $PSDefaultParameterValues["Invoke-*:WebSession"] = $global:disalogin
+        $PSDefaultParameterValues["Invoke-*:CertificateThumbprint"] = $global:disadownload.certthumbprint
+        $PSDefaultParameterValues["Invoke-*:WebSession"] = $global:disadownload.disalogin
         $allfiles = @()
         $number = 0
     }

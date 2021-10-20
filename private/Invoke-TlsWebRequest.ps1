@@ -29,11 +29,11 @@ function Invoke-TlsWebRequest {
         [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor $_
     }
 
-    if ($global:websession) {
-        Invoke-WebRequest @Args -WebSession $global:websession -UseBasicParsing -ErrorAction Stop
+    if ($global:disadownload.websession) {
+        Invoke-WebRequest @Args -WebSession $global:disadownload.websession -UseBasicParsing -ErrorAction Stop
     } else {
         Invoke-WebRequest @Args -SessionVariable websession -UseBasicParsing -ErrorAction Stop
-        $global:websession = $websession
+        $global:disadownload.websession = $websession
     }
 
     [Net.ServicePointManager]::SecurityProtocol = $currentVersionTls

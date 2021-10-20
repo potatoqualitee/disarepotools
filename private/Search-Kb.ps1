@@ -15,7 +15,7 @@ function Search-Kb {
         [pscustomobject[]]$InputObject
     )
     process {
-        if (-not $OperatingSystem -and -not $Architecture -and -not $Product -and -not $Language -and -not $global:ConnectedWsus) {
+        if (-not $OperatingSystem -and -not $Architecture -and -not $Product -and -not $Language -and -not $global:disadownload.ConnectedWsus) {
             return $InputObject
         } else {
             $allobjects += $InputObject
@@ -23,7 +23,7 @@ function Search-Kb {
     }
     end {
         foreach ($object in $allobjects) {
-            if ($global:ConnectedWsus -and $Source -contains "WSUS") {
+            if ($global:disadownload.ConnectedWsus -and $Source -contains "WSUS") {
                 if ($object.Id) {
                     $result = Get-PSWSUSUpdate -Update $object.Id | Select-Object -First 1
                 } else {
@@ -74,9 +74,9 @@ function Search-Kb {
             if ($Language) {
                 # are there any language matches at all? if not just skip.
                 $languagespecific = $false
-                foreach ($key in $global:languages.Keys) {
+                foreach ($key in $global:disadownload.languages.Keys) {
                     $shortname = $key.Split(" ")[0]
-                    $code = $global:languages[$key]
+                    $code = $global:disadownload.languages[$key]
                     # object.Language cannot be trusted unless an underscore is there ‾\_(ツ)_/‾
                     if ($object.Link -match '-.._' -or $object.Link -match "-$($code)_" -or (($object.Language -match '_' -and $object.Language -match $shortname) -or $object.Title -match $shortname -or $object.Description -match $shortname)) {
                         $languagespecific = $true
@@ -88,7 +88,7 @@ function Search-Kb {
                     $matches = @()
                     foreach ($item in $Language) {
                         $shortname = $item.Split(" ")[0]
-                        $matches += $object.Link -match "$($global:languages[$item])_"
+                        $matches += $object.Link -match "$($global:disadownload.languages[$item])_"
                         if (($object.Language -match '_' -and $object.Language -match $shortname) -or $object.Title -match $shortname -or $object.Description -match $shortname) {
                             $textmatch = $true
                         }

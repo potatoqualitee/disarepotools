@@ -2,8 +2,8 @@
 function Invoke-WsusDbQuery {
     [CmdletBinding()]
     param (
-        [string]$ComputerName = $global:WsusServer,
-        [PSCredential]$Credential = $global:WsusServerCredential,
+        [string]$ComputerName = $global:disadownload.WsusServer,
+        [PSCredential]$Credential = $global:disadownload.WsusServerCredential,
         [string]$Pattern,
         [string]$UpdateId,
         [switch]$EnableException

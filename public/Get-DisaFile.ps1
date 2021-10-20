@@ -67,7 +67,7 @@ function Get-DisaFile {
         $pluginbase = "$baselink/Metadata.aspx?id"
     }
     process {
-        if (-not $global:disalogin) {
+        if (-not $global:disadownload.disalogin) {
             try {
                 $null = Connect-DisaRepository
             } catch {
@@ -75,13 +75,13 @@ function Get-DisaFile {
             }
         }
 
-        $PSDefaultParameterValues["Invoke-*:CertificateThumbprint"] = $global:certthumbprint
-        $PSDefaultParameterValues["Invoke-*:WebSession"] = $global:disalogin
+        $PSDefaultParameterValues["Invoke-*:CertificateThumbprint"] = $global:disadownload.certthumbprint
+        $PSDefaultParameterValues["Invoke-*:WebSession"] = $global:disadownload.disalogin
 
         $ProgressPreference = "SilentlyContinue"
 
         if (-not $Limit) {
-            $Limit = $global:totalrows
+            $Limit = $global:disadownload.totalrows
         }
 
         $rules = @()
@@ -116,7 +116,7 @@ function Get-DisaFile {
         Write-Verbose "Is search: $($Since -or $Search)"
 
         $body = @{
-            collectionId = $global:repoid
+            collectionId = $global:disadownload.repoid
             _search      = $($Since -or $Search)
             rows         = $Limit
             page         = $Page
@@ -179,14 +179,27 @@ function Get-DisaFile {
             foreach ($file in $downloadfile) {
                 Write-Verbose "Getting detailed information"
                 $downloadlink = ($baselink + ($file.href)).Replace("&amp;", "&")
-                $headers = (Invoke-WebRequest -Uri $downloadlink -Method Head).Headers
 
-                if (-not $headers.'Content-disposition') {
-                    continue
+                if (-not $global:disadownload.linkdetails[$downloadlink]) {
+                    Write-Verbose "Link not found in cache, grabbing headers"
+                    $headers = (Invoke-WebRequest -Uri $downloadlink -Method Head).Headers
+
+                    if (-not $headers.'Content-disposition') {
+                        continue
+                    }
+
+                    $filename = $headers.'Content-disposition'.Replace("attachment;filename=", "").Replace("attachment; filename=", "")
+                    $size = $headers.'Content-Length' | Select-Object -First 1
+                    $temp = [PSCustomObject]@{
+                        filename = "hello"
+                        size     = 1
+                    }
+                    $global:disadownload.linkdetails[$downloadlink] = $temp
+                } else {
+                    Write-Verbose "Link details found in cache"
+                    $filename = $global:disadownload.linkdetails[$downloadlink].filename
+                    $size = $global:disadownload.linkdetails[$downloadlink].size
                 }
-
-                $filename = $headers.'Content-disposition'.Replace("attachment;filename=", "").Replace("attachment; filename=", "")
-                $size = $headers.'Content-Length' | Select-Object -First 1
 
                 [PSCustomObject]@{
                     DownloadLink = $downloadlink

@@ -1,5 +1,5 @@
 function new-db {
-    $global:dailydb = "C:\github\kbupdate\library\db\kb.sqlite"
+    $global:disadownload.dailydb = "C:\github\kbupdate\library\db\kb.sqlite"
     Remove-Item -Path $dailydb -ErrorAction Ignore
     $null = New-SQLiteConnection -DataSource $dailydb
     # updateid is not uniqueidentifier cuz I can't figure out how to do WHERE
@@ -83,7 +83,7 @@ function Update-Db {
     param()
     Import-Module C:\github\dbatools
 
-    $global:db = "C:\github\kbupdate-library\library\kb.sqlite"
+    $global:disadownload.db = "C:\github\kbupdate-library\library\kb.sqlite"
     $dailydb = "C:\github\kbupdate\library\db\kb.sqlite"
     #$query = "SELECT CAST(UpdateId AS VARCHAR(36)) as UpdateId FROM [SUSDB].[PUBLIC_VIEWS].[vUpdate] Where ArrivalDate >= DATEADD(hour,-4, GETDATE())"
     $query = "SELECT CAST(UpdateId AS VARCHAR(36)) as UpdateId FROM [SUSDB].[PUBLIC_VIEWS].[vUpdate] Where ArrivalDate >= DATEADD(hour,-24, GETDATE())"
@@ -101,16 +101,16 @@ function Update-Db {
 
         if ($update.UpdateId) {
             # delete old entries
-            Invoke-SqliteQuery -DataSource $global:db -Query "delete from Kb where UpdateId = '$($update.UpdateId)'"
+            Invoke-SqliteQuery -DataSource $global:disadownload.db -Query "delete from Kb where UpdateId = '$($update.UpdateId)'"
             Invoke-SqliteQuery -DataSource $dailydb -Query "delete from Kb where UpdateId = '$($update.UpdateId)'"
 
-            Invoke-SqliteQuery -DataSource $global:db -Query "delete from SupersededBy where UpdateId = '$($update.UpdateId)'"
+            Invoke-SqliteQuery -DataSource $global:disadownload.db -Query "delete from SupersededBy where UpdateId = '$($update.UpdateId)'"
             Invoke-SqliteQuery -DataSource $dailydb -Query "delete from SupersededBy where UpdateId = '$($update.UpdateId)'"
 
-            Invoke-SqliteQuery -DataSource $global:db -Query "delete from Supersedes where UpdateId = '$($update.UpdateId)'"
+            Invoke-SqliteQuery -DataSource $global:disadownload.db -Query "delete from Supersedes where UpdateId = '$($update.UpdateId)'"
             Invoke-SqliteQuery -DataSource $dailydb -Query "delete from Supersedes where UpdateId = '$($update.UpdateId)'"
 
-            Invoke-SqliteQuery -DataSource $global:db -Query "delete from Link where UpdateId = '$($update.UpdateId)'"
+            Invoke-SqliteQuery -DataSource $global:disadownload.db -Query "delete from Link where UpdateId = '$($update.UpdateId)'"
             Invoke-SqliteQuery -DataSource $dailydb -Query "delete from Link where UpdateId = '$($update.UpdateId)'"
         }
 
@@ -215,16 +215,16 @@ function Add-Kb {
 
         if ($update.UpdateId) {
             # delete old entries
-            Invoke-SqliteQuery -DataSource $global:db -Query "delete from Kb where UpdateId = '$($update.UpdateId)'"
+            Invoke-SqliteQuery -DataSource $global:disadownload.db -Query "delete from Kb where UpdateId = '$($update.UpdateId)'"
             Invoke-SqliteQuery -DataSource $dailydb -Query "delete from Kb where UpdateId = '$($update.UpdateId)'"
 
-            Invoke-SqliteQuery -DataSource $global:db -Query "delete from SupersededBy where UpdateId = '$($update.UpdateId)'"
+            Invoke-SqliteQuery -DataSource $global:disadownload.db -Query "delete from SupersededBy where UpdateId = '$($update.UpdateId)'"
             Invoke-SqliteQuery -DataSource $dailydb -Query "delete from SupersededBy where UpdateId = '$($update.UpdateId)'"
 
-            Invoke-SqliteQuery -DataSource $global:db -Query "delete from Supersedes where UpdateId = '$($update.UpdateId)'"
+            Invoke-SqliteQuery -DataSource $global:disadownload.db -Query "delete from Supersedes where UpdateId = '$($update.UpdateId)'"
             Invoke-SqliteQuery -DataSource $dailydb -Query "delete from Supersedes where UpdateId = '$($update.UpdateId)'"
 
-            Invoke-SqliteQuery -DataSource $global:db -Query "delete from Link where UpdateId = '$($update.UpdateId)'"
+            Invoke-SqliteQuery -DataSource $global:disadownload.db -Query "delete from Link where UpdateId = '$($update.UpdateId)'"
             Invoke-SqliteQuery -DataSource $dailydb -Query "delete from Link where UpdateId = '$($update.UpdateId)'"
         }
 

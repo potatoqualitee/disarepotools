@@ -1,5 +1,5 @@
 #requires -Version 5.1
-$global:ModuleRoot = $PSScriptRoot
+$script:ModuleRoot = $PSScriptRoot
 
 function Import-ModuleFile {
     <#
@@ -41,23 +41,20 @@ foreach ($function in (Get-ChildItem "$ModuleRoot\public" -Filter "*.ps1" -Recur
 }
 
 # Setup initial collections
-if (-not $global:kbcollection) {
-    $global:kbcollection = [hashtable]::Synchronized(@{ })
-}
+if (-not $global:disadownload) {
+    $global:disadownload = [hashtable]::Synchronized(@{ })
+    $global:disadownload.linkdetails = [hashtable]::Synchronized(@{ })
 
-if (-not $global:compcollection) {
-    $global:compcollection = [hashtable]::Synchronized(@{ })
-}
-
-$global:repos = @{
-    MicrosoftSecurityBulletins  = 15
-    MicrosoftSecurityAdvisories = 734
-    MicrosoftApplications       = 732
-    MicrosoftToolkits           = 733
+    $global:disadownload.repos = @{
+        MicrosoftSecurityBulletins  = 15
+        MicrosoftSecurityAdvisories = 734
+        MicrosoftApplications       = 732
+        MicrosoftToolkits           = 733
+    }
 }
 
 # Register autocompleter script
-Register-PSFTeppScriptblock -Name Repository -ScriptBlock { $global:repos.Keys }
+Register-PSFTeppScriptblock -Name Repository -ScriptBlock { $global:disadownload.repos.Keys }
 
 # Register the actual auto completer
 Register-PSFTeppArgumentCompleter -Command Connect-DisaRepository -Parameter Repository -Name Repository
