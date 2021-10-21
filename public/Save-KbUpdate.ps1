@@ -13,7 +13,7 @@ function Save-DisaFile {
     #>
     [CmdletBinding()]
     param (
-        [Parameter(ValueFromPipelin, Mandatory)]
+        [Parameter(ValueFromPipeline, Mandatory)]
         [psobject]$InputObject,
         [Alias("FullName")]
         [ValidateScript( { Test-Path -Path $_ } )]

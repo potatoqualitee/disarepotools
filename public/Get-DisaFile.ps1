@@ -18,10 +18,12 @@ function Get-DisaFile {
 
     .PARAMETER ExcludePattern
         DISA's site does not support exclusions at this time. Use this to filter out results that
-        are returned from the website
+        are returned
 
     .PARAMETER Limit
-        Limit the number of files returned. By default, all files are returned.
+        Limit the number of files returned. By default, all files found in the repository are returned.
+
+        Note that if one bulletin/post/KB has multiple files, this is not calculated in the limit.
 
     .PARAMETER Page
         Specify the page needed
@@ -42,7 +44,7 @@ function Get-DisaFile {
     .EXAMPLE
         PS> Get-DisaFile -Limit 3
 
-        Get just the first three files
+        Get just the first three bulletins
 
     .EXAMPLE
         PS> Get-DisaFile -Search "Windows Server" -ExcludePattern "x86|ARM64" -SortOrder Ascending -Limit 3
@@ -179,12 +181,14 @@ function Get-DisaFile {
             foreach ($file in $downloadfile) {
                 Write-Verbose "Getting detailed information"
                 $downloadlink = ($baselink + ($file.href)).Replace("&amp;", "&")
-
+                Write-Verbose "Download link: $downloadlink"
                 if (-not $global:disadownload.linkdetails[$downloadlink]) {
                     Write-Verbose "Link not found in cache, grabbing headers"
                     $headers = (Invoke-WebRequest -Uri $downloadlink -Method Head).Headers
 
                     if (-not $headers.'Content-disposition') {
+                        Write-Verbose "No link found, skipping"
+                        $global:disadownload.linkdetails[$downloadlink] = "Skipped"
                         continue
                     }
 
@@ -197,16 +201,20 @@ function Get-DisaFile {
                     $global:disadownload.linkdetails[$downloadlink] = $temp
                 } else {
                     Write-Verbose "Link details found in cache"
+                    if ($global:disadownload.linkdetails[$downloadlink] -eq "Skipped") {
+                        Write-Verbose "No link found, skipping"
+                        continue
+                    }
                     $filename = $global:disadownload.linkdetails[$downloadlink].filename
                     $size = $global:disadownload.linkdetails[$downloadlink].size
                 }
 
                 [PSCustomObject]@{
-                    DownloadLink = $downloadlink
                     FileTitle    = $row.TITLE
                     FileName     = $filename
-                    PostedDate   = $row.CREATED_DATE
                     SizeMB       = [math]::Round(($size / 1MB), 2)
+                    DownloadLink = $downloadlink
+                    PostedDate   = $row.CREATED_DATE
                 }
             }
         }

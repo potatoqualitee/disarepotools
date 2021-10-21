@@ -40,7 +40,7 @@ foreach ($function in (Get-ChildItem "$ModuleRoot\public" -Filter "*.ps1" -Recur
     . Import-ModuleFile -Path $function.FullName
 }
 
-# Setup initial collections
+# Setup initial collections and use Synchronized which works with runspaces
 if (-not $global:disadownload) {
     $global:disadownload = [hashtable]::Synchronized(@{ })
     $global:disadownload.linkdetails = [hashtable]::Synchronized(@{ })
@@ -62,3 +62,20 @@ Register-PSFTeppArgumentCompleter -Command Connect-DisaRepository -Parameter Rep
 $PSDefaultParameterValues["Invoke-*:ErrorAction"] = "Stop"
 $PSDefaultParameterValues["Invoke-*:UseBasicParsing"] = $true
 $PSDefaultParameterValues["Invoke-*:UserAgent"] = ([Microsoft.PowerShell.Commands.PSUserAgent]::InternetExplorer)
+
+if (-not $IsLinux -and -not $IsMacOs) {
+    $regproxy = Get-ItemProperty -Path "Registry::HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings"
+    $proxy = $regproxy.ProxyServer
+
+    if ($proxy -and -not ([System.Net.Webrequest]::DefaultWebProxy).Address -and $regproxy.ProxyEnable) {
+        [System.Net.Webrequest]::DefaultWebProxy = New-object System.Net.WebProxy $proxy
+        [System.Net.Webrequest]::DefaultWebProxy.Credentials = [System.Net.CredentialCache]::DefaultNetworkCredentials
+    }
+}
+
+$currentVersionTls = [Net.ServicePointManager]::SecurityProtocol
+$currentSupportableTls = [Math]::Max($currentVersionTls.value__, [Net.SecurityProtocolType]::Tls.value__)
+$availableTls = [enum]::GetValues('Net.SecurityProtocolType') | Where-Object { $_ -gt $currentSupportableTls }
+$availableTls | ForEach-Object {
+    [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor $_
+}
