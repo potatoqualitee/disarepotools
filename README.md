@@ -59,13 +59,12 @@ Get-DisaFile -Limit 15 | Out-GridView -PassThru | Save-DisaFile -Path C:\temp
 Get-DisaFile -Limit 15 -Search "Windows 10" | Save-DisaFile -Path C:\temp\Win10
 ```
 
-
-## Screenshots
-
 ## More Help
 
 Get more help
 
 ```powershell
 Get-Help Get-DisaFile -Detailed
+
+Get-Help Connect-DisaRepository -Examples
 ```
