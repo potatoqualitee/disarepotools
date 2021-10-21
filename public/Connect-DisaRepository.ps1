@@ -55,7 +55,12 @@ function Connect-DisaRepository {
 
         try {
             Write-Verbose "Logging in to $Repository with Thumbprint $Thumbprint"
-            $null = Invoke-WebRequest -Uri $loginurl -SessionVariable loginvar -WebSession $null
+            try {
+                $null = Invoke-WebRequest -Uri $loginurl -SessionVariable loginvar -WebSession $null
+            } catch {
+                # Sometimes it fails for an unknown reason. Try again.
+                $null = Invoke-WebRequest -Uri $loginurl -SessionVariable loginvar -WebSession $null
+            }
             $global:disadownload.disalogin = $loginvar
         } catch {
             $global:disadownload.disalogin = $null
