@@ -1,4 +1,4 @@
-<img align="left" src=https://github.com/potatoqualitee/disadownload/blob/initial/logo.png?raw=true alt="disadownload logo">
+<img align="left" src="https://github.com/potatoqualitee/disadownload/blob/initial/logo.png?raw=true" alt="disadownload logo">
 
 # disadownload
 DISA Repository File Manager
