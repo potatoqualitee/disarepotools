@@ -160,8 +160,8 @@ function Invoke-Parallel {
         [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
         [Alias('CN', '__Server', 'IPAddress', 'Server', 'ComputerName')]
         [PSObject]$InputObject,
-        [string]$ObjectName = "KB Articles",
-        [string]$Activity = "Parsing catalog.update.microsoft.com",
+        [string]$ObjectName = "Files",
+        [string]$Activity = "Download files",
         [string]$Status = "Starting threads",
 
         [PSObject]$Parameter,
