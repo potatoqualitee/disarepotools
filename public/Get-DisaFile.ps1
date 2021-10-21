@@ -161,7 +161,7 @@ function Get-DisaFile {
             Write-Verbose "Getting a list of all assets"
             $assets = Invoke-RestMethod @params
         } catch {
-            Write-Verbose "Trying again"
+            Write-Verbose "Connection may have timed out, trying to connect again"
             try {
                 $null = Connect-DisaRepository -Thumbprint $global:disadownload.certthumbprint -Repository $global:disadownload.currentrepo
                 $assets = Invoke-RestMethod @params
