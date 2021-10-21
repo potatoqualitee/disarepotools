@@ -161,7 +161,13 @@ function Get-DisaFile {
             Write-Verbose "Getting a list of all assets"
             $assets = Invoke-RestMethod @params
         } catch {
-            throw $PSItem
+            Write-Verbose "Trying again"
+            try {
+                $null = Connect-DisaRepository -Thumbprint $global:disadownload.certthumbprint -Repository $global:disadownload.currentrepo
+                $assets = Invoke-RestMethod @params
+            } catch {
+                throw $PSItem
+            }
         }
 
         $rows = $assets | ConvertFrom-Json | Select-Object -ExpandProperty Rows
