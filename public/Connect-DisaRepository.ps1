@@ -26,7 +26,7 @@ function Connect-DisaRepository {
     .EXAMPLE
         PS> Connect-DisaRepository
 
-        Conects to the MicrosoftSecurityBulletins repository with a thumbprint that matches "Authentication - "
+        Connects to the MicrosoftSecurityBulletins repository with a thumbprint that matches "Authentication - "
 
     .EXAMPLE
         PS> Connect-DisaRepository -Repository MicrosoftSecurityAdvisories -Thumbprint A909502DD82AE41433E6F83886B00D4277A32A7B

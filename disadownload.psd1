@@ -54,7 +54,7 @@
             Tags         = @('kb', 'knowledgebase', 'windowsupdate', 'update', 'patch', 'patches', 'patching')
 
             # The web address of an icon which can be used in galleries to represent this module
-            IconUri      = 'https://user-images.githubusercontent.com/8278033/60797982-97668c00-a170-11e9-8f61-06bd40413c54.png'
+            IconUri      = 'https://user-images.githubusercontent.com/8278033/68308152-a886c180-00ac-11ea-880c-ef6ff99f5cd4.png'
 
             # Indicates this is a pre-release/testing version of the module.
             IsPrerelease = 'False'
