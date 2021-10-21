@@ -1,5 +1,3 @@
-
-
 function Save-DisaFile {
     <#
     .SYNOPSIS
