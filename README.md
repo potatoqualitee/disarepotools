@@ -46,7 +46,11 @@ Downloads files from DISA repositories in parallel
 
 ```powershell
 # Download the whole repository
-Get-DisaFile | Save-DisaFile
+Get-DisaFile -Verbose | Save-DisaFile
+
+# Download files published in the last 30 days
+$date = (Get-Date).AddDays(-30)
+Get-DisaFile -Since $date -Verbose | Save-DisaFile
 
 # Download selected files to C:\temp
 Get-DisaFile -Limit 15 | Out-GridView -PassThru | Save-DisaFile -Path C:\temp

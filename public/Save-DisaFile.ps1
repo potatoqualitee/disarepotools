@@ -18,9 +18,15 @@ function Save-DisaFile {
         By default, file will not be downloaded if it already exists. Use AllowClobber to redownload.
 
     .EXAMPLE
-        Get-DisaFile | Save-DisaFile
+        Get-DisaFile -Verbose -OutVariable files | Save-DisaFile
 
-        Download the whole repository
+        Download the whole repository and save the results of Get-DisaFile to $files
+
+    .EXAMPLE
+        PS> $date = (Get-Date).AddDays(-30)
+        PS> Get-DisaFile -Since $date -Verbose | Save-DisaFile
+
+        Downloads files published in the last 30 days
 
     .EXAMPLE
         Get-DisaFile -Limit 15 | Out-GridView -PassThru | Save-DisaFile -Path C:\temp
@@ -53,6 +59,13 @@ function Save-DisaFile {
         $allfiles += $InputObject
     }
     end {
+        try {
+            Write-Verbose "Reconnecting once just in case"
+            $null = Connect-DisaRepository -Thumbprint $global:disadownload.certthumbprint -Repository $global:disadownload.currentrepo
+        } catch {
+            continue
+        }
+
         $allfiles | Invoke-Parallel -ImportVariables -ScriptBlock {
             try {
                 $title = $psitem.FileTitle
@@ -64,10 +77,15 @@ function Save-DisaFile {
 
                 if (-not (Test-Path -Path $destination) -or $AllowClobber) {
                     $ProgressPreference = "SilentlyContinue"
-                    Invoke-RestMethod -Uri $source -OutFile $destination -CertificateThumbprint $global:disadownload.certthumbprint -WebSession $global:disadownload.disalogin
+                    try {
+                        Invoke-RestMethod -Uri $source -OutFile $destination -CertificateThumbprint $global:disadownload.certthumbprint -WebSession $global:disadownload.disalogin
+                    } catch {
+                        Write-Verbose "Trying again"
+                        Invoke-RestMethod -Uri $source -OutFile $destination -CertificateThumbprint $global:disadownload.certthumbprint -WebSession $global:disadownload.disalogin
+                    }
                     $ProgressPreference = "Continue"
                 }
-                Get-ChildItem -Path $destination
+                Get-ChildItem -Path $destination -ErrorAction SilentlyContinue
             } catch {
                 Write-Warning "Couldn't download $($filename): $PSItem"
                 continue

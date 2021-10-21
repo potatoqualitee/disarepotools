@@ -61,6 +61,8 @@ Register-PSFTeppArgumentCompleter -Command Connect-DisaRepository -Parameter Rep
 
 $PSDefaultParameterValues["Invoke-*:ErrorAction"] = "Stop"
 $PSDefaultParameterValues["Invoke-*:UseBasicParsing"] = $true
+$PSDefaultParameterValues["Invoke-*:MaximumRetryCount"] = 10
+$PSDefaultParameterValues["Invoke-*:RetryIntervalSec"] = 1
 $PSDefaultParameterValues["Invoke-*:UserAgent"] = ([Microsoft.PowerShell.Commands.PSUserAgent]::InternetExplorer)
 
 if (-not $IsLinux -and -not $IsMacOs) {

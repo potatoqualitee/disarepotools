@@ -81,6 +81,9 @@ function Get-DisaFile {
     begin {
         $baselink = "https://patches.csd.disa.mil"
         $pluginbase = "$baselink/Metadata.aspx?id"
+        $currentrow = 0
+        $PSDefaultParameterValues["Invoke-*:MaximumRetryCount"] = 10
+        $PSDefaultParameterValues["Invoke-*:RetryIntervalSec"] = 1
     }
     process {
         if (-not $global:disadownload.disalogin) {
@@ -174,6 +177,8 @@ function Get-DisaFile {
         Write-Verbose "$(($rows).Count) total rows returned"
 
         foreach ($row in $rows) {
+            $currentrow++
+            Write-Verbose "Processing $currentrow of $(($rows).Count)"
             if ($ExcludePattern) {
                 if ($row.Title -match $ExcludePattern) {
                     Write-Verbose "Skipping $($row.Title) (matched ExcludePattern)"
@@ -186,9 +191,15 @@ function Get-DisaFile {
 
             try {
                 Write-Verbose "Finding link"
-                $data = Invoke-WebRequest -Uri $link
+                try {
+                    $data = Invoke-WebRequest -Uri $link
+                } catch {
+                    Write-Verbose "Trying again"
+                    $data = Invoke-WebRequest -Uri $link
+                }
             } catch {
-                throw $PSItem
+                Write-Warning "Can't connect to link: $PSItem. Moving on"
+                continue
             }
 
             $downloadfile = $data.links | Where-Object outerHTML -match ".ms|.exe|.tar|.zip"
@@ -204,7 +215,13 @@ function Get-DisaFile {
                 Write-Verbose "Download link: $downloadlink"
                 if (-not $global:disadownload.linkdetails[$downloadlink]) {
                     Write-Verbose "Link not found in cache, grabbing headers"
-                    $headers = (Invoke-WebRequest -Uri $downloadlink -Method Head).Headers
+
+                    try {
+                        $headers = (Invoke-WebRequest -Uri $downloadlink -Method Head).Headers
+                    } catch {
+                        Write-Verbose "Trying again"
+                        $headers = (Invoke-WebRequest -Uri $downloadlink -Method Head).Headers
+                    }
 
                     if (-not $headers.'Content-disposition') {
                         Write-Verbose "No link found, skipping"
