@@ -3,13 +3,35 @@
 function Connect-DisaRepository {
     <#
     .SYNOPSIS
-    Sup
+        Connects to a DISA Repository and creates a web session for reuse within Get-DisaFile and Save-DisaFile
 
     .DESCRIPTION
-    Sup
+        Connects to a DISA Repository and creates a web session for reuse within Get-DisaFile and Save-DisaFile
+
+    .PARAMETER Repository
+        The repository to connect to. Currently, only the following repos are supported:
+
+        MicrosoftSecurityBulletins
+        MicrosoftSecurityAdvisories
+        MicrosoftApplications
+        MicrosoftToolkits
+
+        Defaults to MicrosoftSecurityBulletins
+
+    .PARAMETER Thumbprint
+        Certificate thumbprint of the authorized smartcard
+
+        By default, the command will try to figure out the right one
 
     .EXAMPLE
-    Sup
+        PS> Connect-DisaRepository
+
+        Conects to the MicrosoftSecurityBulletins repository with a thumbprint that matches "Authentication - "
+
+    .EXAMPLE
+        PS> Connect-DisaRepository -Repository MicrosoftSecurityAdvisories -Thumbprint A909502DD82AE41433E6F83886B00D4277A32A7B
+
+        Connects to the MicrosoftSecurityAdvisories repository using certificate with thumbprint A909502DD82AE41433E6F83886B00D4277A32A7B
     #>
     [CmdletBinding()]
     param (

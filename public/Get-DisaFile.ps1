@@ -3,18 +3,18 @@
 function Get-DisaFile {
     <#
     .SYNOPSIS
-        Gets a list of downloads available from the DISA Patch Repository
+        Gets a list of files available for download from the DISA Patch Repository
 
     .DESCRIPTION
-        This command a list of downloads available from the DISA Patch Repository
+        This command gets a list of files available for download from the DISA Patch Repository
 
-        Smartcard authentication is supported
+        Smartcard authentication is supported, woo!
 
     .PARAMETER Since
-        List only files since a certain date
+        List only files published since a certain date
 
     .PARAMETER Search
-        Use Keyword filtering
+        Use Keyword filtering like you do on the DISA website
 
     .PARAMETER ExcludePattern
         DISA's site does not support exclusions at this time. Use this to filter out results that
@@ -29,27 +29,41 @@ function Get-DisaFile {
         Specify the page needed
 
     .PARAMETER SortOrder
-        The sort order. Options are Descending or Ascending.
+        The sort order
+
+        Options are Descending or Ascending
+
+        Default from DISA's site is CREATED_DATE Descending
 
     .PARAMETER SortColumn
-        The column to sort by. Options are TITLE or CREATED_DATE. Default is TITLE.
+        The column to sort by
+
+        Options are TITLE or CREATED_DATE
+
+        Default is TITLE but SortColumn is only called when SortOrder is specified
 
     .EXAMPLE
         PS> Get-DisaFile
+
+        Gets a list of every file in the connected DISA repository
 
     .EXAMPLE
         PS> $date = (Get-Date).AddDays(-30)
         PS> Get-DisaFile -Since $date
 
+        Gets a list of files published in the last 30 days
+
     .EXAMPLE
         PS> Get-DisaFile -Limit 3
 
-        Get just the first three bulletins
+        Get just the first three results
+
+        Note that if one result has multiple files, this is not calculated in the limit
 
     .EXAMPLE
-        PS> Get-DisaFile -Search "Windows Server" -ExcludePattern "x86|ARM64" -SortOrder Ascending -Limit 3
+        PS> Get-DisaFile -Search "Windows Server" -ExcludePattern "x86|ARM64" -SortOrder Ascending
 
-        Get just the first three files
+        Searches for Windows Server and excludes any files matching x86 or ARM64, ordered by oldest created
     #>
     [CmdletBinding()]
     param (
