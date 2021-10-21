@@ -1,13 +1,41 @@
 function Save-DisaFile {
     <#
     .SYNOPSIS
-    Sup
+        Downloads files from DISA repositories in parallel
 
     .DESCRIPTION
-    Sup
+        Downloads files from DISA repositories in parallel
+
+    .PARAMETER InputObject
+        The piped object from Get-DisaFile
+
+    .PARAMETER Path
+        The path to save all files
+
+        Defaults to current directory if not specified
+
+    .PARAMETER AllowClobber
+        By default, file will not be downloaded if it already exists. Use AllowClobber to redownload.
 
     .EXAMPLE
-    Sup
+        Get-DisaFile | Save-DisaFile
+
+        Download the whole repository
+
+    .EXAMPLE
+        Get-DisaFile -Limit 15 | Out-GridView -PassThru | Save-DisaFile -Path C:\temp
+
+        Download selected files to C:\temp
+
+    .EXAMPLE
+        Get-DisaFile -Limit 15 -Search "Windows 10" | Save-DisaFile -Path C:\temp\Win10
+
+        Download files matching "Windows 10" to C:\temp\win10
+
+    .EXAMPLE
+        Get-DisaFile | Save-DisaFile -AllowClobber -Verbose
+
+        Overwrite existing files
     #>
     [CmdletBinding()]
     param (
@@ -15,40 +43,30 @@ function Save-DisaFile {
         [psobject]$InputObject,
         [Alias("FullName")]
         [ValidateScript( { Test-Path -Path $_ } )]
-        [string]$Path = $PWD
+        [string]$Path = $PWD,
+        [switch]$AllowClobber
     )
     begin {
-        $PSDefaultParameterValues["Invoke-*:CertificateThumbprint"] = $global:disadownload.certthumbprint
-        $PSDefaultParameterValues["Invoke-*:WebSession"] = $global:disadownload.disalogin
         $allfiles = @()
-        $number = 0
     }
     process {
         $allfiles += $InputObject
     }
     end {
-        $total = $allfiles.Count
-        foreach ($file in $allfiles) {
+        $allfiles | Invoke-Parallel -ImportVariables -ScriptBlock {
             try {
-                $number++
-                $title = $file.FileTitle
-                $filename = $file.filename
-                $size = $file.SizeMB
-                $source = $file.DownloadLink
+                $title = $psitem.FileTitle
+                $filename = $psitem.filename
+                $size = $psitem.SizeMB
+                $source = $psitem.DownloadLink
                 $destination = Join-Path -Path $Path -ChildPath $filename
                 Write-Verbose "Downloading $title -$filename. File size: $size MB."
 
-                $params = @{
-                    TotalSteps = $total + 1
-                    StepNumber = $number
-                    Message    = "Downloading $filename ($size MB)"
-                    Activity   = "Downloading file $number of $total"
+                if (-not (Test-Path -Path $destination) -or $AllowClobber) {
+                    $ProgressPreference = "SilentlyContinue"
+                    Invoke-RestMethod -Uri $source -OutFile $destination -CertificateThumbprint $global:disadownload.certthumbprint -WebSession $global:disadownload.disalogin
+                    $ProgressPreference = "Continue"
                 }
-                Write-ProgressHelper @params
-
-                $ProgressPreference = "SilentlyContinue"
-                Invoke-RestMethod -Uri $source -OutFile $destination
-                $ProgressPreference = "Continue"
                 Get-ChildItem -Path $destination
             } catch {
                 Write-Warning "Couldn't download $($filename): $PSItem"
