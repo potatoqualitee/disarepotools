@@ -258,11 +258,11 @@ function Get-DisaFile {
 
                 if ($global:disadownload.currentrepo -eq "MicrosoftSecurityBulletins") {
 
-                    if ($rowtitle -match "x64" -or $filename -match "-x64_") {
+                    if ($rowtitle -match "x64" -or $filename -match "-x64_" -or $rowtitle -like "*64*bit*") {
                         $arch = "x64"
                     } elseif ($rowtitle -match "arm64" -or $filename -match "-arm64_") {
                         $arch = "arm64"
-                    } elseif ($rowtitle -match "x86" -or $filename -match "x86") {
+                    } elseif ($rowtitle -match "x86" -or $filename -match "x86" -or $rowtitle -like "*32*bit*") {
                         $arch = "x86"
                     } else {
                         $arch = $null
