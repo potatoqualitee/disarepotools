@@ -178,19 +178,19 @@ function Get-DisaFile {
 
         foreach ($row in $rows) {
             $currentrow++
-            $title = $row.Title
+            $rowtitle = $row.TITLE
             Write-Verbose "Processing $currentrow of $(($rows).Count)"
 
             if ($ExcludePattern) {
-                if ($row.Title -match $ExcludePattern) {
-                    Write-Verbose "Skipping $($row.Title) (matched ExcludePattern)"
+                if ($rowtitle -match $ExcludePattern) {
+                    Write-Verbose "Skipping $rowtitle (matched ExcludePattern)"
                     continue
                 }
             }
 
-            if ($global:disadownload.rowresults[$title]) {
+            if ($global:disadownload.rowresults[$rowtitle]) {
                 Write-Verbose "Found result in cache"
-                $global:disadownload.rowresults[$title]
+                $global:disadownload.rowresults[$rowtitle]
                 continue
             }
 
@@ -220,6 +220,7 @@ function Get-DisaFile {
 
             foreach ($file in $downloadfile) {
                 Write-Verbose "Getting detailed information"
+                $os = $null
                 $downloadlink = ($baselink + ($file.href)).Replace("&amp;", "&")
                 Write-Verbose "Download link: $downloadlink"
                 if (-not $global:disadownload.linkdetails[$downloadlink]) {
@@ -255,17 +256,118 @@ function Get-DisaFile {
                     $size = $global:disadownload.linkdetails[$downloadlink].size
                 }
 
-                $result = [PSCustomObject]@{
-                    FileTitle    = $row.TITLE
-                    FileName     = $filename
-                    SizeMB       = [math]::Round(($size / 1MB), 2)
-                    DownloadLink = $downloadlink
-                    PostedDate   = $row.CREATED_DATE
+                if ($global:disadownload.currentrepo -eq "MicrosoftSecurityBulletins") {
+
+                    if ($rowtitle -match "x64" -or $filename -match "-x64_") {
+                        $arch = "x64"
+                    } elseif ($rowtitle -match "arm64" -or $filename -match "-arm64_") {
+                        $arch = "arm64"
+                    } elseif ($rowtitle -match "x86" -or $filename -match "x86") {
+                        $arch = "x86"
+                    } else {
+                        $arch = $null
+                    }
+
+                    if ($rowtitle -match "Windows Embedded") {
+                        $os = "Windows Embedded"
+                    }
+
+                    if ($rowtitle -match "Windows 7") {
+                        $os = "Windows 7"
+                    }
+
+                    if ($rowtitle -match "Windows 8") {
+                        $os = "Windows 8"
+                    }
+
+                    if ($rowtitle -match "Windows 8.1") {
+                        $os = "Windows 8.1"
+                    }
+
+                    if ($rowtitle -match "Windows 11") {
+                        $os = "Windows 11"
+                    }
+
+                    if ($rowtitle -match "Windows 10") {
+                        if ($rowtitle -match "1809") {
+                            $os = "Windows 10 Version 1809"
+                        } elseif ($rowtitle -match "1909") {
+                            $os = "Windows 10 Version 1909"
+                        } elseif ($rowtitle -match "2004") {
+                            $os = "Windows 10 Version 2004"
+                        } elseif ($rowtitle -match "21H1") {
+                            $os = "Windows 10 Version 21H1"
+                        } elseif ($rowtitle -match "20H2") {
+                            $os = "Windows 10 Version 20H2"
+                        } elseif ($rowtitle -match "1507") {
+                            $os = "Windows 10 Version 1507"
+                        } elseif ($rowtitle -match "1607") {
+                            $os = "Windows 10 Version 1607"
+                        } else {
+                            $os = "Windows 10"
+                        }
+                    }
+
+                    if ($rowtitle -match "Windows Server") {
+                        if ($rowtitle -match "2012 R2") {
+                            $os = "Windows Server 2012 R2"
+                        } elseif ($rowtitle -match "2012") {
+                            $os = "Windows Server 2012"
+                        } elseif ($rowtitle -match "2019") {
+                            $os = "Windows Server 2019"
+                        } elseif ($rowtitle -match "21H2") {
+                            $os = "Windows Server Version 21H2"
+                        } elseif ($rowtitle -match "2004") {
+                            $os = "Windows Server Version 2004"
+                        } elseif ($rowtitle -match "2008 R2") {
+                            $os = "Windows Server 2008 R2"
+                        } elseif ($rowtitle -match "2008") {
+                            $os = "Windows Server 2008"
+                        } elseif ($rowtitle -match "2022") {
+                            $os = "Windows Server 2022"
+                        } else {
+                            $os = "Windows Server"
+                        }
+                    }
+
+                    # I don't know regex
+                    $guid = $filename.Split("_") | Select-Object -Last 1
+                    $guid = $guid.Split(".") | Select-Object -First 1
+                    $date = ($rowtitle).Split(" ") | Select-Object -First 1
+                    if ($rowtitle -match "KB") {
+                        $kb = ($rowtitle).Split(" (KB") | Where-Object { "$PSItem".EndsWith(")") }
+                        $kb = $kb.Replace(")", "")
+                        $kb = $kb | Where-Object { $PSItem -match "^[\d\.]+$" }
+                    } else {
+                        $kb = $null
+                    }
+                    $title = ($rowtitle).Replace("$date ", "").Replace(" (KB$kb)", "").Trim()
+
+                    $result = [PSCustomObject]@{
+                        Title        = $title
+                        FileName     = $filename
+                        Architecture = $arch
+                        OS           = $os
+                        SizeMB       = [math]::Round(($size / 1MB), 2)
+                        DownloadLink = $downloadlink
+                        PostedDate   = $row.CREATED_DATE
+                        GUID         = $guid
+                        DisaDate     = $date
+                        KB           = $kb
+                    }
+                } else {
+                    $result = [PSCustomObject]@{
+                        Title        = $rowtitle
+                        FileName     = $filename
+                        SizeMB       = [math]::Round(($size / 1MB), 2)
+                        DownloadLink = $downloadlink
+                        PostedDate   = $row.CREATED_DATE
+                    }
                 }
                 $results += $result
                 $result
             }
-            $global:disadownload.rowresults[$title] = $results
+            $global:disadownload.rowresults[$rowtitle] = $results
         }
     }
 }

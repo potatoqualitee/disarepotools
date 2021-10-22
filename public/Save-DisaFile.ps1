@@ -68,7 +68,7 @@ function Save-DisaFile {
 
         $allfiles | Invoke-Parallel -ImportVariables -ScriptBlock {
             try {
-                $title = $psitem.FileTitle
+                $title = $psitem.Title
                 $filename = $psitem.filename
                 $size = $psitem.SizeMB
                 $source = $psitem.DownloadLink
