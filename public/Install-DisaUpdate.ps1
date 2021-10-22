@@ -1,5 +1,5 @@
 # requires 5
-function Install-KbUpdate {
+function Install-DisaUpdate {
     <#
     .SYNOPSIS
         Installs KBs on local and remote servers on Windows-based systems
@@ -29,10 +29,10 @@ function Install-KbUpdate {
         Note this does place the hotfix files in your local and remote Downloads directories
 
     .PARAMETER Guid
-        If the file is an exe and no GUID is specified, we will have to get it from Get-KbUpdate
+        If the file is an exe and no GUID is specified, we will have to get it from Get-DisaUpdate
 
     .PARAMETER Title
-        If the file is an exe and no Title is specified, we will have to get it from Get-KbUpdate
+        If the file is an exe and no Title is specified, we will have to get it from Get-DisaUpdate
 
     .PARAMETER ArgumentList
         This is an advanced parameter for those of you who need special argumentlists for your platform-specific update.
@@ -40,7 +40,7 @@ function Install-KbUpdate {
         The argument list required by SQL updates are already accounted for.
 
     .PARAMETER InputObject
-        Allows infos to be piped in from Get-KbUpdate
+        Allows infos to be piped in from Get-DisaUpdate
 
     .PARAMETER EnableException
         By default, when something goes wrong we try to catch it, interpret it and give you a friendly warning message.
@@ -53,17 +53,17 @@ function Install-KbUpdate {
         License: MIT https://opensource.org/licenses/MIT
 
     .EXAMPLE
-        PS C:\> Install-KbUpdate -ComputerName sql2017 -FilePath C:\temp\windows10.0-kb4534273-x64_74bf76bc5a941bbbd0052caf5c3f956867e1de38.msu
+        PS C:\> Install-DisaUpdate -ComputerName sql2017 -FilePath C:\temp\windows10.0-kb4534273-x64_74bf76bc5a941bbbd0052caf5c3f956867e1de38.msu
 
         Installs KB4534273 from the C:\temp directory on sql2017
 
     .EXAMPLE
-        PS C:\> Install-KbUpdate -ComputerName sql2017 -FilePath \\dc\sql\windows10.0-kb4532947-x64_20103b70445e230e5994dc2a89dc639cd5756a66.msu
+        PS C:\> Install-DisaUpdate -ComputerName sql2017 -FilePath \\dc\sql\windows10.0-kb4532947-x64_20103b70445e230e5994dc2a89dc639cd5756a66.msu
 
         Installs KB4534273 from the \\dc\sql\ directory on sql2017
 
     .EXAMPLE
-        PS C:\> Install-KbUpdate -ComputerName sql2017 -HotfixId kb4486129
+        PS C:\> Install-DisaUpdate -ComputerName sql2017 -HotfixId kb4486129
 
         Downloads an update, stores it in Downloads and installs it from there
 
@@ -73,8 +73,8 @@ function Install-KbUpdate {
             FilePath = "C:\temp\sqlserver2017-kb4498951-x64_b143d28a48204eb6ebab62394ce45df53d73f286.exe"
             Verbose = $true
         }
-        PS C:\> Install-KbUpdate @params
-        PS C:\> Uninstall-KbUpdate -ComputerName sql2017 -HotfixId KB4498951
+        PS C:\> Install-DisaUpdate @params
+        PS C:\> Uninstall-DisaUpdate -ComputerName sql2017 -HotfixId KB4498951
 
         Installs KB4498951 on sql2017 then uninstalls it ✔
     #>
@@ -100,7 +100,7 @@ function Install-KbUpdate {
     )
     process {
         if (-not $PSBoundParameters.HotfixId -and -not $PSBoundParameters.FilePath -and -not $PSBoundParameters.InputObject) {
-            Stop-PSFFunction -EnableException:$EnableException -Message "You must specify either HotfixId or FilePath or pipe in the results from Get-KbUpdate"
+            Stop-PSFFunction -EnableException:$EnableException -Message "You must specify either HotfixId or FilePath or pipe in the results from Get-DisaUpdate"
             return
         }
 
@@ -170,7 +170,7 @@ function Install-KbUpdate {
                 if (-not $updatefile) {
                     # try to automatically download it for them
                     if (-not $PSBoundParameters.InputObject) {
-                        $InputObject = Get-KbUpdate -Architecture x64 -Credential $credential -Latest -Pattern $HotfixId | Where-Object Link
+                        $InputObject = Get-DisaUpdate -Architecture x64 -Credential $credential -Latest -Pattern $HotfixId | Where-Object Link
                     }
 
                     # note to reader: if this picks the wrong one, please download the required file manually.
@@ -181,7 +181,7 @@ function Install-KbUpdate {
                             $file = Split-Path $InputObject.Link -Leaf | Select-Object -Last 1
                         }
                     } else {
-                        Stop-PSFFunction -EnableException:$EnableException -Message "Could not find file on $computer and couldn't find it online. Try piping in exactly what you'd like from Get-KbUpdate." -Continue
+                        Stop-PSFFunction -EnableException:$EnableException -Message "Could not find file on $computer and couldn't find it online. Try piping in exactly what you'd like from Get-DisaUpdate." -Continue
                     }
 
                     if ((Test-Path -Path "$home\Downloads\$file")) {
@@ -189,7 +189,7 @@ function Install-KbUpdate {
                     } else {
                         if ($PSCmdlet.ShouldProcess($computer, "File not detected, downloading now to $home\Downloads and copying to remote computer")) {
                             $warnatbottom = $true
-                            $updatefile = $InputObject | Select-Object -First 1 | Save-KbUpdate -Path "$home\Downloads"
+                            $updatefile = $InputObject | Select-Object -First 1 | Save-DisaUpdate -Path "$home\Downloads"
                         }
                     }
                 }
@@ -237,7 +237,7 @@ function Install-KbUpdate {
                         $Guid = $PSBoundParameters.InputObject.Guid
                         $Title = $PSBoundParameters.InputObject.Title
                     } else {
-                        $InputObject = Get-KbUpdate -Architecture x64 -Credential $credential -Latest -Pattern $HotfixId | Where-Object Link | Select-Object -First 1
+                        $InputObject = Get-DisaUpdate -Architecture x64 -Credential $credential -Latest -Pattern $HotfixId | Where-Object Link | Select-Object -First 1
                         $Guid = $InputObject | Select-Object -ExpandProperty UpdateId
                         $Title = $InputObject | Select-Object -ExpandProperty Title
                     }
@@ -320,7 +320,7 @@ function Install-KbUpdate {
                         }
                     } -ArgumentList $hotfix, $VerbosePreference, $PSBoundParameters.FileName -ErrorAction Stop
                     Write-Verbose -Message "Finished installing, checking status"
-                    $exists = Get-KbInstalledUpdate -ComputerName $computer -Credential $Credential -Pattern $hotfix.property.id -IncludeHidden
+                    $exists = Get-DisaInstalledUpdate -ComputerName $computer -Credential $Credential -Pattern $hotfix.property.id -IncludeHidden
 
                     if ($exists.Summary -match "restart") {
                         $status = "This update requires a restart"
@@ -336,7 +336,7 @@ function Install-KbUpdate {
                 } catch {
                     if ("$PSItem" -match "Serialized XML is nested too deeply") {
                         Write-PSFMessage -Level Verbose -Message "Serialized XML is nested too deeply. Forcing output."
-                        $exists = Get-KbInstalledUpdate -ComputerName $computer -Credential $credential -HotfixId $hotfix.property.id
+                        $exists = Get-DisaInstalledUpdate -ComputerName $computer -Credential $credential -HotfixId $hotfix.property.id
 
                         if ($exists) {
                             [pscustomobject]@{
