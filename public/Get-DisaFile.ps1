@@ -82,7 +82,7 @@ function Get-DisaFile {
         $baselink = "https://patches.csd.disa.mil"
         $pluginbase = "$baselink/Metadata.aspx?id"
         $currentrow = 0
-        $PSDefaultParameterValues["Invoke-*:MaximumRetryCount"] = 10
+        $PSDefaultParameterValues["Invoke-*:MaximumRetryCount"] = 5
         $PSDefaultParameterValues["Invoke-*:RetryIntervalSec"] = 1
     }
     process {
@@ -178,7 +178,9 @@ function Get-DisaFile {
 
         foreach ($row in $rows) {
             $currentrow++
+            $title = $row.Title
             Write-Verbose "Processing $currentrow of $(($rows).Count)"
+
             if ($ExcludePattern) {
                 if ($row.Title -match $ExcludePattern) {
                     Write-Verbose "Skipping $($row.Title) (matched ExcludePattern)"
@@ -186,6 +188,13 @@ function Get-DisaFile {
                 }
             }
 
+            if ($global:disadownload.rowresults[$title]) {
+                Write-Verbose "Found result in cache"
+                $global:disadownload.rowresults[$title]
+                continue
+            }
+
+            $results = @()
             $id = $row.STANDARDASSETID
             $link = "$pluginbase=$id"
 
@@ -246,14 +255,17 @@ function Get-DisaFile {
                     $size = $global:disadownload.linkdetails[$downloadlink].size
                 }
 
-                [PSCustomObject]@{
+                $result = [PSCustomObject]@{
                     FileTitle    = $row.TITLE
                     FileName     = $filename
                     SizeMB       = [math]::Round(($size / 1MB), 2)
                     DownloadLink = $downloadlink
                     PostedDate   = $row.CREATED_DATE
                 }
+                $results += $result
+                $result
             }
+            $global:disadownload.rowresults[$title] = $results
         }
     }
 }
