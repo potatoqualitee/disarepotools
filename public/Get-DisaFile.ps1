@@ -220,7 +220,7 @@ function Get-DisaFile {
 
             foreach ($file in $downloadfile) {
                 Write-Verbose "Getting detailed information"
-                $os = $null
+                $product = $null
                 $downloadlink = ($baselink + ($file.href)).Replace("&amp;", "&")
                 Write-Verbose "Download link: $downloadlink"
                 if (-not $global:disadownload.linkdetails[$downloadlink]) {
@@ -269,67 +269,103 @@ function Get-DisaFile {
                     }
 
                     if ($rowtitle -match "Windows Embedded") {
-                        $os = "Windows Embedded"
+                        $product = "Windows Embedded"
                     }
 
                     if ($rowtitle -match "Windows 7") {
-                        $os = "Windows 7"
+                        $product = "Windows 7"
                     }
 
                     if ($rowtitle -match "Windows 8") {
-                        $os = "Windows 8"
+                        $product = "Windows 8"
                     }
 
                     if ($rowtitle -match "Windows 8.1") {
-                        $os = "Windows 8.1"
+                        $product = "Windows 8.1"
                     }
 
                     if ($rowtitle -match "Windows 11") {
-                        $os = "Windows 11"
+                        $product = "Windows 11"
                     }
 
                     if ($rowtitle -match "Windows 10") {
                         if ($rowtitle -match "1809") {
-                            $os = "Windows 10 Version 1809"
+                            $product = "Windows 10 Version 1809"
                         } elseif ($rowtitle -match "1909") {
-                            $os = "Windows 10 Version 1909"
+                            $product = "Windows 10 Version 1909"
                         } elseif ($rowtitle -match "2004") {
-                            $os = "Windows 10 Version 2004"
+                            $product = "Windows 10 Version 2004"
                         } elseif ($rowtitle -match "21H1") {
-                            $os = "Windows 10 Version 21H1"
+                            $product = "Windows 10 Version 21H1"
                         } elseif ($rowtitle -match "20H2") {
-                            $os = "Windows 10 Version 20H2"
+                            $product = "Windows 10 Version 20H2"
                         } elseif ($rowtitle -match "1507") {
-                            $os = "Windows 10 Version 1507"
+                            $product = "Windows 10 Version 1507"
                         } elseif ($rowtitle -match "1607") {
-                            $os = "Windows 10 Version 1607"
+                            $product = "Windows 10 Version 1607"
                         } else {
-                            $os = "Windows 10"
+                            $product = "Windows 10"
                         }
                     }
 
                     if ($rowtitle -match "Windows Server") {
                         if ($rowtitle -match "2012 R2") {
-                            $os = "Windows Server 2012 R2"
+                            $product = "Windows Server 2012 R2"
                         } elseif ($rowtitle -match "2012") {
-                            $os = "Windows Server 2012"
+                            $product = "Windows Server 2012"
                         } elseif ($rowtitle -match "2019") {
-                            $os = "Windows Server 2019"
+                            $product = "Windows Server 2019"
                         } elseif ($rowtitle -match "21H2") {
-                            $os = "Windows Server Version 21H2"
+                            $product = "Windows Server Version 21H2"
                         } elseif ($rowtitle -match "2004") {
-                            $os = "Windows Server Version 2004"
+                            $product = "Windows Server Version 2004"
                         } elseif ($rowtitle -match "2008 R2") {
-                            $os = "Windows Server 2008 R2"
+                            $product = "Windows Server 2008 R2"
                         } elseif ($rowtitle -match "2008") {
-                            $os = "Windows Server 2008"
+                            $product = "Windows Server 2008"
                         } elseif ($rowtitle -match "2022") {
-                            $os = "Windows Server 2022"
+                            $product = "Windows Server 2022"
                         } else {
-                            $os = "Windows Server"
+                            $product = "Windows Server"
                         }
                     }
 
+                    if ($rowtitle -match "server" -and $rowtitle -match "21H2") {
+                        $product = "Windows Server Version 21H2"
+                    }
+
+                    if (-not $product) {
+                        if ($rowtitle -match ".NET") {
+                            $product = ".NET"
+                        }
+                        if ($rowtitle -match ".NET Core") {
+                            $product = ".NET Core"
+                        }
+                        if ($rowtitle -match "Excel") {
+                            $product = "Excel"
+                        }
+                        if ($rowtitle -match "SharePoint") {
+                            $product = "SharePoint"
+                        }
+                        if ($rowtitle -match "Microsoft Word") {
+                            $product = "Word"
+                        }
+                        if ($rowtitle -match "Microsoft Office") {
+                            $product = "Office"
+                        }
+                        if ($rowtitle -match "Edge") {
+                            $product = "Edge"
+                        }
+                        if ($rowtitle -match "Malicious") {
+                            $product = "Malicious Software Removal Tool"
+                        }
+                        if ($rowtitle -match "Exchange") {
+                            $product = "Exchange"
+                        }
+                        if ($rowtitle -match "Azure Stack") {
+                            $product = "Azure Stack"
+                        }
+                    }
                     # I don't know regex
                     $guid = $filename.Split("_") | Select-Object -Last 1
                     $guid = $guid.Split(".") | Select-Object -First 1
@@ -347,7 +383,7 @@ function Get-DisaFile {
                         Title        = $title
                         FileName     = $filename
                         Architecture = $arch
-                        OS           = $os
+                        Product      = $product
                         SizeMB       = [math]::Round(($size / 1MB), 2)
                         DownloadLink = $downloadlink
                         PostedDate   = $row.CREATED_DATE
