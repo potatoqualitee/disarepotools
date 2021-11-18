@@ -188,9 +188,9 @@ function Get-DisaFile {
                 }
             }
 
-            if ($global:disadownload.rowresults[$rowtitle]) {
+            if ($global:disarepotools.rowresults[$rowtitle]) {
                 Write-Verbose "Found result in cache"
-                $global:disadownload.rowresults[$rowtitle]
+                $global:disarepotools.rowresults[$rowtitle]
                 continue
             }
 
@@ -256,7 +256,7 @@ function Get-DisaFile {
                     $size = $global:disarepotools.linkdetails[$downloadlink].size
                 }
 
-                if ($global:disadownload.currentrepo -eq "MicrosoftSecurityBulletins") {
+                if ($global:disarepotools.currentrepo -eq "MicrosoftSecurityBulletins") {
 
                     if ($rowtitle -match "x64" -or $filename -match "-x64_" -or $rowtitle -match "64-bit") {
                         $arch = "x64"
@@ -403,7 +403,7 @@ function Get-DisaFile {
                 $results += $result
                 $result
             }
-            $global:disadownload.rowresults[$rowtitle] = $results
+            $global:disarepotools.rowresults[$rowtitle] = $results
         }
     }
 }
