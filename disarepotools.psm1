@@ -44,6 +44,7 @@ foreach ($function in (Get-ChildItem "$ModuleRoot\public" -Filter "*.ps1" -Recur
 if (-not $global:disarepotools) {
     $global:disarepotools = [hashtable]::Synchronized(@{ })
     $global:disarepotools.linkdetails = [hashtable]::Synchronized(@{ })
+    $global:disarepotools.rowresults = [hashtable]::Synchronized(@{ })
 
     $global:disarepotools.repos = @{
         MicrosoftSecurityBulletins  = 15
@@ -61,7 +62,7 @@ Register-PSFTeppArgumentCompleter -Command Connect-DisaRepository -Parameter Rep
 
 $PSDefaultParameterValues["Invoke-*:ErrorAction"] = "Stop"
 $PSDefaultParameterValues["Invoke-*:UseBasicParsing"] = $true
-$PSDefaultParameterValues["Invoke-*:MaximumRetryCount"] = 10
+$PSDefaultParameterValues["Invoke-*:MaximumRetryCount"] = 5
 $PSDefaultParameterValues["Invoke-*:RetryIntervalSec"] = 1
 $PSDefaultParameterValues["Invoke-*:UserAgent"] = ([Microsoft.PowerShell.Commands.PSUserAgent]::InternetExplorer)
 
