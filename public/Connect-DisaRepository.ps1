@@ -44,7 +44,7 @@ function Connect-DisaRepository {
             if ($thumbprints.count -eq 1) {
                 $Thumbprint = $thumbprints | Select-Object -ExpandProperty Thumbprint
             } else {
-                $Thumbprint = $thumbprints | Out-GridView -Passthru | Select-Object -First 1 -ExpandProperty Thumbprint
+                $Thumbprint = Get-ChildItem Cert:\CurrentUser\My | Select-Object FriendlyName, Thumbprint, Subject, Issuer | Out-GridView -Passthru | Select-Object -First 1 -ExpandProperty Thumbprint
             }
         }
     }
