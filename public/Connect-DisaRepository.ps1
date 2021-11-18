@@ -36,8 +36,18 @@ function Connect-DisaRepository {
     [CmdletBinding()]
     param (
         [string]$Repository = "MicrosoftSecurityBulletins",
-        [string]$Thumbprint = ([System.Security.Cryptography.X509Certificates.X509Certificate2[]](Get-ChildItem Cert:\CurrentUser\My | Where-Object FriendlyName -like "*Authentication -*") | Select-Object -ExpandProperty Thumbprint)
+        [string]$Thumbprint
     )
+    begin {
+        if (-not $Thumbprint) {
+            $thumbprints = Get-ChildItem Cert:\CurrentUser\My | Where-Object FriendlyName -like "*Authentication -*"
+            if ($thumbprints.count -eq 1) {
+                $Thumbprint = $thumbprints | Select-Object -ExpandProperty Thumbprint
+            } else {
+                $Thumbprint = Get-ChildItem Cert:\CurrentUser\My | Select-Object FriendlyName, Thumbprint, Subject, Issuer | Out-GridView -Passthru | Select-Object -First 1 -ExpandProperty Thumbprint
+            }
+        }
+    }
     process {
         if (-not $Thumbprint -and -not $global:disarepotools.certthumbprint) {
             throw "Certificate thumbprint could not be automatically determined. Please use Connect-DisaRepository -Thumbprint to specify the desired certificate."
