@@ -86,7 +86,7 @@ function Get-DisaFile {
         $PSDefaultParameterValues["Invoke-*:RetryIntervalSec"] = 1
     }
     process {
-        if (-not $global:disadownload.disalogin) {
+        if (-not $global:disarepotools.disalogin) {
             try {
                 $null = Connect-DisaRepository
             } catch {
@@ -94,13 +94,13 @@ function Get-DisaFile {
             }
         }
 
-        $PSDefaultParameterValues["Invoke-*:CertificateThumbprint"] = $global:disadownload.certthumbprint
-        $PSDefaultParameterValues["Invoke-*:WebSession"] = $global:disadownload.disalogin
+        $PSDefaultParameterValues["Invoke-*:CertificateThumbprint"] = $global:disarepotools.certthumbprint
+        $PSDefaultParameterValues["Invoke-*:WebSession"] = $global:disarepotools.disalogin
 
         $ProgressPreference = "SilentlyContinue"
 
         if (-not $Limit) {
-            $Limit = $global:disadownload.totalrows
+            $Limit = $global:disarepotools.totalrows
         }
 
         $rules = @()
@@ -135,7 +135,7 @@ function Get-DisaFile {
         Write-Verbose "Is search: $($Since -or $Search)"
 
         $body = @{
-            collectionId = $global:disadownload.repoid
+            collectionId = $global:disarepotools.repoid
             _search      = $($Since -or $Search)
             rows         = $Limit
             page         = $Page
@@ -166,7 +166,7 @@ function Get-DisaFile {
         } catch {
             Write-Verbose "Connection may have timed out, trying to connect again"
             try {
-                $null = Connect-DisaRepository -Thumbprint $global:disadownload.certthumbprint -Repository $global:disadownload.currentrepo
+                $null = Connect-DisaRepository -Thumbprint $global:disarepotools.certthumbprint -Repository $global:disarepotools.currentrepo
                 $assets = Invoke-RestMethod @params
             } catch {
                 throw $PSItem
@@ -213,7 +213,7 @@ function Get-DisaFile {
                 Write-Verbose "Getting detailed information"
                 $downloadlink = ($baselink + ($file.href)).Replace("&amp;", "&")
                 Write-Verbose "Download link: $downloadlink"
-                if (-not $global:disadownload.linkdetails[$downloadlink]) {
+                if (-not $global:disarepotools.linkdetails[$downloadlink]) {
                     Write-Verbose "Link not found in cache, grabbing headers"
 
                     try {
@@ -225,7 +225,7 @@ function Get-DisaFile {
 
                     if (-not $headers.'Content-disposition') {
                         Write-Verbose "No link found, skipping"
-                        $global:disadownload.linkdetails[$downloadlink] = "Skipped"
+                        $global:disarepotools.linkdetails[$downloadlink] = "Skipped"
                         continue
                     }
 
@@ -235,15 +235,15 @@ function Get-DisaFile {
                         filename = $filename
                         size     = $size
                     }
-                    $global:disadownload.linkdetails[$downloadlink] = $temp
+                    $global:disarepotools.linkdetails[$downloadlink] = $temp
                 } else {
                     Write-Verbose "Link details found in cache"
-                    if ($global:disadownload.linkdetails[$downloadlink] -eq "Skipped") {
+                    if ($global:disarepotools.linkdetails[$downloadlink] -eq "Skipped") {
                         Write-Verbose "No link found, skipping"
                         continue
                     }
-                    $filename = $global:disadownload.linkdetails[$downloadlink].filename
-                    $size = $global:disadownload.linkdetails[$downloadlink].size
+                    $filename = $global:disarepotools.linkdetails[$downloadlink].filename
+                    $size = $global:disarepotools.linkdetails[$downloadlink].size
                 }
 
                 [PSCustomObject]@{

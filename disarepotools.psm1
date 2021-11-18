@@ -41,11 +41,11 @@ foreach ($function in (Get-ChildItem "$ModuleRoot\public" -Filter "*.ps1" -Recur
 }
 
 # Setup initial collections and use Synchronized which works with runspaces
-if (-not $global:disadownload) {
-    $global:disadownload = [hashtable]::Synchronized(@{ })
-    $global:disadownload.linkdetails = [hashtable]::Synchronized(@{ })
+if (-not $global:disarepotools) {
+    $global:disarepotools = [hashtable]::Synchronized(@{ })
+    $global:disarepotools.linkdetails = [hashtable]::Synchronized(@{ })
 
-    $global:disadownload.repos = @{
+    $global:disarepotools.repos = @{
         MicrosoftSecurityBulletins  = 15
         MicrosoftSecurityAdvisories = 734
         MicrosoftApplications       = 732
@@ -54,7 +54,7 @@ if (-not $global:disadownload) {
 }
 
 # Register autocompleter script
-Register-PSFTeppScriptblock -Name Repository -ScriptBlock { $global:disadownload.repos.Keys }
+Register-PSFTeppScriptblock -Name Repository -ScriptBlock { $global:disarepotools.repos.Keys }
 
 # Register the actual auto completer
 Register-PSFTeppArgumentCompleter -Command Connect-DisaRepository -Parameter Repository -Name Repository

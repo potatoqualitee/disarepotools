@@ -61,7 +61,7 @@ function Save-DisaFile {
     end {
         try {
             Write-Verbose "Reconnecting once just in case"
-            $null = Connect-DisaRepository -Thumbprint $global:disadownload.certthumbprint -Repository $global:disadownload.currentrepo
+            $null = Connect-DisaRepository -Thumbprint $global:disarepotools.certthumbprint -Repository $global:disarepotools.currentrepo
         } catch {
             continue
         }
@@ -78,10 +78,10 @@ function Save-DisaFile {
                 if (-not (Test-Path -Path $destination) -or $AllowClobber) {
                     $ProgressPreference = "SilentlyContinue"
                     try {
-                        Invoke-RestMethod -Uri $source -OutFile $destination -CertificateThumbprint $global:disadownload.certthumbprint -WebSession $global:disadownload.disalogin
+                        Invoke-RestMethod -Uri $source -OutFile $destination -CertificateThumbprint $global:disarepotools.certthumbprint -WebSession $global:disarepotools.disalogin
                     } catch {
                         Write-Verbose "Trying again"
-                        Invoke-RestMethod -Uri $source -OutFile $destination -CertificateThumbprint $global:disadownload.certthumbprint -WebSession $global:disadownload.disalogin
+                        Invoke-RestMethod -Uri $source -OutFile $destination -CertificateThumbprint $global:disarepotools.certthumbprint -WebSession $global:disarepotools.disalogin
                     }
                     $ProgressPreference = "Continue"
                 }

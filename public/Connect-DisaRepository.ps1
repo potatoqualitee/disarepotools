@@ -39,18 +39,18 @@ function Connect-DisaRepository {
         [string]$Thumbprint = ([System.Security.Cryptography.X509Certificates.X509Certificate2[]](Get-ChildItem Cert:\CurrentUser\My | Where-Object FriendlyName -like "*Authentication -*") | Select-Object -ExpandProperty Thumbprint)
     )
     process {
-        if (-not $Thumbprint -and -not $global:disadownload.certthumbprint) {
+        if (-not $Thumbprint -and -not $global:disarepotools.certthumbprint) {
             throw "Certificate thumbprint could not be automatically determined. Please use Connect-DisaRepository -Thumbprint to specify the desired certificate."
         } else {
             if (-not $Thumbprint) {
-                $Thumbprint = $global:disadownload.certthumbprint
+                $Thumbprint = $global:disarepotools.certthumbprint
             }
-            $global:disadownload.certthumbprint = $Thumbprint
+            $global:disarepotools.certthumbprint = $Thumbprint
         }
 
-        $global:disadownload.currentrepo = $Repository
-        $global:disadownload.repoid = $global:disadownload.repos[$Repository]
-        $PSDefaultParameterValues["Invoke-*:CertificateThumbprint"] = $global:disadownload.certthumbprint
+        $global:disarepotools.currentrepo = $Repository
+        $global:disarepotools.repoid = $global:disarepotools.repos[$Repository]
+        $PSDefaultParameterValues["Invoke-*:CertificateThumbprint"] = $global:disarepotools.certthumbprint
         $loginurl = "https://patches.csd.disa.mil/PkiLogin/Default.aspx"
 
         try {
@@ -61,17 +61,17 @@ function Connect-DisaRepository {
                 # Sometimes it fails for an unknown reason. Try again.
                 $null = Invoke-WebRequest -Uri $loginurl -SessionVariable loginvar -WebSession $null
             }
-            $global:disadownload.disalogin = $loginvar
+            $global:disarepotools.disalogin = $loginvar
         } catch {
-            $global:disadownload.disalogin = $null
+            $global:disarepotools.disalogin = $null
             throw $PSItem
         }
 
         Write-Verbose "Setting global WebSession"
-        $PSDefaultParameterValues["Invoke-*:WebSession"] = $global:disadownload.disalogin
+        $PSDefaultParameterValues["Invoke-*:WebSession"] = $global:disarepotools.disalogin
 
         $body = [PSCustomObject]@{
-            collectionId = $global:disadownload.repoid
+            collectionId = $global:disarepotools.repoid
             _search      = $false
             rows         = 15
             page         = 1
@@ -87,16 +87,16 @@ function Connect-DisaRepository {
 
         try {
             Write-Verbose "Getting total records"
-            $global:disadownload.totalrows = (Invoke-RestMethod @params | ConvertFrom-Json).Total
+            $global:disarepotools.totalrows = (Invoke-RestMethod @params | ConvertFrom-Json).Total
         } catch {
             throw $PSItem
         }
 
         [PSCustomObject]@{
             Repository   = $Repository
-            RepositoryId = $global:disadownload.repoid
-            TotalRows    = $global:disadownload.totalrows
-            Thumbprint   = $global:disadownload.certthumbprint
+            RepositoryId = $global:disarepotools.repoid
+            TotalRows    = $global:disarepotools.totalrows
+            Thumbprint   = $global:disarepotools.certthumbprint
             Status       = "Connected"
         }
     }

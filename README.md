@@ -1,12 +1,12 @@
-<img align="left" src="https://github.com/potatoqualitee/disadownload/blob/main/logo.png?raw=true" alt="disadownload logo">
+<img align="left" src="https://github.com/potatoqualitee/disarepotools/blob/main/logo.png?raw=true" alt="disarepotools logo">
 
-# disadownload
+# disarepotools
 DISA Repository File Manager
 
 ## Install
 
 ```powershell
-Install-Module disadownload -Scope CurrentUser
+Install-Module disarepotools -Scope CurrentUser
 ```
 
 ## Connect-DisaRepository
