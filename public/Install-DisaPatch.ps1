@@ -1,5 +1,5 @@
 # requires 5
-function Install-DisaUpdate {
+function Install-DisaPatch {
     <#
     .SYNOPSIS
         Installs KBs on local and remote servers on Windows-based systems
@@ -53,17 +53,17 @@ function Install-DisaUpdate {
         License: MIT https://opensource.org/licenses/MIT
 
     .EXAMPLE
-        PS C:\> Install-DisaUpdate -ComputerName sql2017 -FilePath C:\temp\windows10.0-kb4534273-x64_74bf76bc5a941bbbd0052caf5c3f956867e1de38.msu
+        PS C:\> Install-DisaPatch -ComputerName sql2017 -FilePath C:\temp\windows10.0-kb4534273-x64_74bf76bc5a941bbbd0052caf5c3f956867e1de38.msu
 
         Installs KB4534273 from the C:\temp directory on sql2017
 
     .EXAMPLE
-        PS C:\> Install-DisaUpdate -ComputerName sql2017 -FilePath \\dc\sql\windows10.0-kb4532947-x64_20103b70445e230e5994dc2a89dc639cd5756a66.msu
+        PS C:\> Install-DisaPatch -ComputerName sql2017 -FilePath \\dc\sql\windows10.0-kb4532947-x64_20103b70445e230e5994dc2a89dc639cd5756a66.msu
 
         Installs KB4534273 from the \\dc\sql\ directory on sql2017
 
     .EXAMPLE
-        PS C:\> Install-DisaUpdate -ComputerName sql2017 -HotfixId kb4486129
+        PS C:\> Install-DisaPatch -ComputerName sql2017 -HotfixId kb4486129
 
         Downloads an update, stores it in Downloads and installs it from there
 
@@ -73,8 +73,8 @@ function Install-DisaUpdate {
             FilePath = "C:\temp\sqlserver2017-kb4498951-x64_b143d28a48204eb6ebab62394ce45df53d73f286.exe"
             Verbose = $true
         }
-        PS C:\> Install-DisaUpdate @params
-        PS C:\> Uninstall-DisaUpdate -ComputerName sql2017 -HotfixId KB4498951
+        PS C:\> Install-DisaPatch @params
+        PS C:\> Uninstall-DisaPatch -ComputerName sql2017 -HotfixId KB4498951
 
         Installs KB4498951 on sql2017 then uninstalls it ✔
     #>
@@ -86,7 +86,7 @@ function Install-DisaUpdate {
         [Parameter(ValueFromPipelineByPropertyName)]
         [Alias("Name", "KBUpdate", "Id")]
         [string]$HotfixId,
-        [Alias("Path")]
+        [Alias("Path", "FullName")]
         [string]$FilePath,
         [Parameter(ValueFromPipelineByPropertyName)]
         [Alias("UpdateId")]
@@ -134,11 +134,11 @@ function Install-DisaUpdate {
                 }
             }
 
-            $hasxhotfix = Invoke-PSFCommand -ComputerName $computer -Credential $Credential -ScriptBlock {
+            $hasxhotfixmodule = Invoke-PSFCommand -ComputerName $computer -Credential $Credential -ScriptBlock {
                 Get-Module -ListAvailable xWindowsUpdate
             }
 
-            if (-not $hasxhotfix) {
+            if (-not $hasxhotfixmodule) {
                 try {
                     # Copy xWindowsUpdate to Program Files. The module is pretty much required to be in the PS Modules directory.
                     $oldpref = $ProgressPreference
@@ -154,7 +154,9 @@ function Install-DisaUpdate {
             }
 
             if ($PSBoundParameters.FilePath) {
-                $remotefileexists = Invoke-PSFCommand -ComputerName $computer -Credential $Credential -ArgumentList $FilePath -ScriptBlock { Get-ChildItem -Path $args -ErrorAction SilentlyContinue }
+                $remotefileexists = Invoke-PSFCommand -ComputerName $computer -Credential $Credential -ArgumentList $FilePath -ScriptBlock {
+                    Get-ChildItem -Path $args -ErrorAction SilentlyContinue
+                }
             }
 
             if (-not $remotefileexists) {
@@ -164,33 +166,6 @@ function Install-DisaUpdate {
                     if (-not $updatefile) {
                         $filename = Split-Path -Path $FilePath -Leaf
                         $updatefile = Get-ChildItem -Path "$home\Downloads\$filename" -ErrorAction SilentlyContinue
-                    }
-                }
-
-                if (-not $updatefile) {
-                    # try to automatically download it for them
-                    if (-not $PSBoundParameters.InputObject) {
-                        $InputObject = Get-DisaUpdate -Architecture x64 -Credential $credential -Latest -Pattern $HotfixId | Where-Object Link
-                    }
-
-                    # note to reader: if this picks the wrong one, please download the required file manually.
-                    if ($InputObject.Link) {
-                        if ($InputObject.Link -match 'x64') {
-                            $file = $InputObject | Where-Object Link -match 'x64' | Select-Object -ExpandProperty Link -Last 1 | Split-Path -Leaf
-                        } else {
-                            $file = Split-Path $InputObject.Link -Leaf | Select-Object -Last 1
-                        }
-                    } else {
-                        Stop-PSFFunction -EnableException:$EnableException -Message "Could not find file on $computer and couldn't find it online. Try piping in exactly what you'd like from Get-DisaUpdate." -Continue
-                    }
-
-                    if ((Test-Path -Path "$home\Downloads\$file")) {
-                        $updatefile = Get-ChildItem -Path "$home\Downloads\$file"
-                    } else {
-                        if ($PSCmdlet.ShouldProcess($computer, "File not detected, downloading now to $home\Downloads and copying to remote computer")) {
-                            $warnatbottom = $true
-                            $updatefile = $InputObject | Select-Object -First 1 | Save-DisaUpdate -Path "$home\Downloads"
-                        }
                     }
                 }
 
@@ -228,8 +203,12 @@ function Install-DisaUpdate {
             }
 
             if ($FilePath.EndsWith("exe")) {
-                if (-not $ArgumentList -and $FilePath -match "sql") {
-                    $ArgumentList = "/action=patch /AllInstances /quiet /IAcceptSQLServerLicenseTerms"
+                if (-not $ArgumentList) {
+                    if ($FilePath -match "sql") {
+                        $ArgumentList = "/action=patch /AllInstances /quiet /IAcceptSQLServerLicenseTerms"
+                    } else {
+                        $ArgumentList = "/install /quiet /notrestart"
+                    }
                 }
 
                 if (-not $Guid) {
@@ -237,9 +216,17 @@ function Install-DisaUpdate {
                         $Guid = $PSBoundParameters.InputObject.Guid
                         $Title = $PSBoundParameters.InputObject.Title
                     } else {
-                        $InputObject = Get-DisaUpdate -Architecture x64 -Credential $credential -Latest -Pattern $HotfixId | Where-Object Link | Select-Object -First 1
-                        $Guid = $InputObject | Select-Object -ExpandProperty UpdateId
-                        $Title = $InputObject | Select-Object -ExpandProperty Title
+                        try {
+                            $cab = New-Object Microsoft.Deployment.Compression.Cab.Cabinfo $FilePath
+                            $temp = Get-PSFPath -Name Temp
+                            $null = $cab.UnpackFile("0","$temp\0.xml")
+                            $xml = [xml](Get-Content "$temp\0.xml")
+                            $Guid = ([guid]$xml.BurnManifest.Registration.Id).Guid
+                            $Title = (Get-Item $FilePath).VersionInfo.ProductName
+                        } catch {
+                            Stop-PSFFunction -EnableException:$EnableException -Message "Could not determine Guid from $FilePath. Please provide a Guid." -ErrorRecord $PSItem
+                            return
+                        }
                     }
                 }
 
@@ -320,7 +307,7 @@ function Install-DisaUpdate {
                         }
                     } -ArgumentList $hotfix, $VerbosePreference, $PSBoundParameters.FileName -ErrorAction Stop
                     Write-Verbose -Message "Finished installing, checking status"
-                    $exists = Get-DisaInstalledUpdate -ComputerName $computer -Credential $Credential -Pattern $hotfix.property.id -IncludeHidden
+                    $exists = Get-DisaInstalledSoftware -ComputerName $computer -Credential $Credential -Pattern $hotfix.property.id -IncludeHidden
 
                     if ($exists.Summary -match "restart") {
                         $status = "This update requires a restart"
@@ -336,7 +323,7 @@ function Install-DisaUpdate {
                 } catch {
                     if ("$PSItem" -match "Serialized XML is nested too deeply") {
                         Write-PSFMessage -Level Verbose -Message "Serialized XML is nested too deeply. Forcing output."
-                        $exists = Get-DisaInstalledUpdate -ComputerName $computer -Credential $credential -HotfixId $hotfix.property.id
+                        $exists = Get-DisaInstalledSoftware -ComputerName $computer -Credential $credential -HotfixId $hotfix.property.id
 
                         if ($exists) {
                             [pscustomobject]@{
@@ -352,11 +339,6 @@ function Install-DisaUpdate {
                     }
                 }
             }
-        }
-    }
-    end {
-        if ($warnatbottom) {
-            Write-PSFMessage -Level Output -Message "$updatefile still exists on your local drive, and likely other servers as well, in the Downloads directory."
         }
     }
 }

@@ -1,4 +1,4 @@
-function Get-DisaInstalledUpdate {
+function Get-DisaInstalledSoftware {
     <#
     .SYNOPSIS
         Replacement for Get-Hotfix, Get-Package, searching the registry and searching CIM for updates
@@ -29,22 +29,22 @@ function Get-DisaInstalledUpdate {
         License: MIT https://opensource.org/licenses/MIT
 
     .EXAMPLE
-        PS C:\> Get-DisaInstalledUpdate
+        PS C:\> Get-DisaInstalledSoftware
 
         Gets all the updates installed on the local machine
 
     .EXAMPLE
-        PS C:\> Get-DisaInstalledUpdate -ComputerName server01
+        PS C:\> Get-DisaInstalledSoftware -ComputerName server01
 
         Gets all the updates installed on server01
 
     .EXAMPLE
-        PS C:\> Get-DisaInstalledUpdate -ComputerName server01 -Pattern KB4057119
+        PS C:\> Get-DisaInstalledSoftware -ComputerName server01 -Pattern KB4057119
 
         Gets all the updates installed on server01 that match KB4057119
 
     .EXAMPLE
-        PS C:\> Get-DisaInstalledUpdate -ComputerName server01 -Pattern KB4057119 | Select -ExpandProperty InstallFile
+        PS C:\> Get-DisaInstalledSoftware -ComputerName server01 -Pattern KB4057119 | Select -ExpandProperty InstallFile
 
         Shows alls of the install files for KB4057119 on server01. InstallFile is hidden by default because it has a lot of information.
 #>
@@ -339,7 +339,7 @@ function Get-DisaInstalledUpdate {
         try {
             foreach ($computer in $ComputerName) {
                 Invoke-PSFCommand -ComputerName $computer -Credential $Credential -ErrorAction Stop -ScriptBlock $scriptblock -ArgumentList @($Pattern), $IncludeHidden, $VerbosePreference | Sort-Object -Property Name |
-                Select-Object -Property * -ExcludeProperty PSComputerName, RunspaceId | Select-DefaultView -ExcludeProperty InstallFile
+                    Select-Object -Property * -ExcludeProperty PSComputerName, RunspaceId | Select-DefaultView -ExcludeProperty InstallFile
             }
         } catch {
             Stop-PSFFunction -EnableException:$EnableException -Message "Failure" -ErrorRecord $_ -Continue

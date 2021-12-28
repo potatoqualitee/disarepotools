@@ -1,4 +1,4 @@
-function Uninstall-DisaUpdate {
+function Uninstall-DisaPatch {
     <#
     .SYNOPSIS
         Uninstalls KB updates on Windows-based systems
@@ -6,7 +6,7 @@ function Uninstall-DisaUpdate {
     .DESCRIPTION
         Uninstalls KB updates on Windows-based systems
 
-        Note that sometimes, an uninstall will leave registry entries and Get-DisaInstalledUpdate will report the product is installed. This is the behavior of some patches and happens even when using the Windows uninstall GUI.
+        Note that sometimes, an uninstall will leave registry entries and Get-DisaInstalledSoftware will report the product is installed. This is the behavior of some patches and happens even when using the Windows uninstall GUI.
 
     .PARAMETER ComputerName
         Used to connect to a remote host
@@ -18,7 +18,7 @@ function Uninstall-DisaUpdate {
         The HotfixId of the patch
 
     .PARAMETER InputObject
-        Allows results to be piped in from Get-DisaInstalledUpdate
+        Allows results to be piped in from Get-DisaInstalledSoftware
 
     .PARAMETER ArgumentList
         Allows you to override our automatically determined ArgumentList
@@ -41,28 +41,28 @@ function Uninstall-DisaUpdate {
         License: MIT https://opensource.org/licenses/MIT
 
     .EXAMPLE
-        PS C:\> Uninstall-DisaUpdate -ComputerName sql2017 -HotfixId kb4498951
+        PS C:\> Uninstall-DisaPatch -ComputerName sql2017 -HotfixId kb4498951
 
         Uninstalls kb4498951 on sql2017
 
     .EXAMPLE
-        PS C:\> Uninstall-DisaUpdate -ComputerName sql2017 -HotfixId kb4498951 -Confirm:$false
+        PS C:\> Uninstall-DisaPatch -ComputerName sql2017 -HotfixId kb4498951 -Confirm:$false
 
         Uninstalls kb4498951 on sql2017 without prompts
 
     .EXAMPLE
-        PS C:\>  Get-DisaInstalledUpdate -ComputerName server23, server24 -Pattern kb4498951 | Uninstall-DisaUpdate
+        PS C:\>  Get-DisaInstalledSoftware -ComputerName server23, server24 -Pattern kb4498951 | Uninstall-DisaPatch
 
         Uninstalls kb4498951 from server23 and server24
 
     .EXAMPLE
-        PS C:\> Uninstall-DisaUpdate -ComputerName sql2017 -HotfixId KB4534273 -WhatIf
+        PS C:\> Uninstall-DisaPatch -ComputerName sql2017 -HotfixId KB4534273 -WhatIf
 
         Shows what would happen if the command were to run but does not execute any changes
 
     .EXAMPLE
-        PS C:\> Install-DisaUpdate -ComputerName sql2017 -FilePath \\dc\sql\windows10.0-kb4486129-x64_0b61d9a03db731562e0a0b49383342a4d8cbe36a.msu
-        PS C:\> Get-DisaInstalledUpdate -Pattern kb4486129 -ComputerName sql2017 | Uninstall-DisaUpdate
+        PS C:\> Install-DisaPatch -ComputerName sql2017 -FilePath \\dc\sql\windows10.0-kb4486129-x64_0b61d9a03db731562e0a0b49383342a4d8cbe36a.msu
+        PS C:\> Get-DisaInstalledSoftware -Pattern kb4486129 -ComputerName sql2017 | Uninstall-DisaPatch
 
         Quick lil example to show an install, followed by an uninstall
 #>
@@ -164,7 +164,7 @@ function Uninstall-DisaUpdate {
     process {
         if (-not $PSBoundParameters.HotfixId -and -not $PSBoundParameters.InputObject.HotfixId) {
             # some just wont have hotfix i guess but you can pipe from the command and still get this error so fix the erorr
-            Stop-PSFFunction -EnableException:$EnableException -Message "You must specify either HotfixId or pipe in the results from Get-DisaInstalledUpdate"
+            Stop-PSFFunction -EnableException:$EnableException -Message "You must specify either HotfixId or pipe in the results from Get-DisaInstalledSoftware"
             return
         }
 
@@ -179,7 +179,7 @@ function Uninstall-DisaUpdate {
             }
 
             foreach ($computer in $PSBoundParameters.ComputerName) {
-                $exists = Get-DisaInstalledUpdate -Pattern $hotfix -ComputerName $computer -IncludeHidden
+                $exists = Get-DisaInstalledSoftware -Pattern $hotfix -ComputerName $computer -IncludeHidden
                 if (-not $exists) {
                     Stop-PSFFunction -EnableException:$EnableException -Message "$hotfix is not installed on $computer" -Continue
                 } else {
