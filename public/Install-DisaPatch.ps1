@@ -87,6 +87,7 @@ function Install-DisaPatch {
         [Alias("Name", "KBUpdate", "Id")]
         [string]$HotfixId,
         [Alias("Path", "FullName")]
+        [Parameter(ValueFromPipelineByPropertyName)]
         [string]$FilePath,
         [Parameter(ValueFromPipelineByPropertyName)]
         [Alias("UpdateId")]
@@ -94,8 +95,6 @@ function Install-DisaPatch {
         [Parameter(ValueFromPipelineByPropertyName)]
         [string]$Title,
         [string]$ArgumentList,
-        [Parameter(ValueFromPipeline)]
-        [pscustomobject[]]$InputObject,
         [switch]$EnableException
     )
     process {
@@ -113,14 +112,15 @@ function Install-DisaPatch {
             $HotfixId = "KB$HotfixId"
         }
 
-        foreach ($computer in $ComputerName.ComputerName) {
+        foreach ($computer in $ComputerName) {
+            Write-PSFMessage -Level Verbose -Message "Processing $computer"
             # null out a couple things to be safe
             $remotefileexists = $remotehome = $remotesession = $null
 
-            if ($computer -ne $env:ComputerName) {
+            if (-not $computer.IsLocalhost) {
                 # a lot of the file copy work will be done in the remote $home dir
                 $remotehome = Invoke-PSFCommand -ComputerName $computer -Credential $Credential -ScriptBlock { $home }
-
+                Write-PSFMessage -Level Verbose -Message "Remote home: $remotehome"
                 if (-not $remotesession) {
                     $remotesession = Get-PSSession -ComputerName $computer | Where-Object { $PsItem.Availability -eq 'Available' -and ($PsItem.Name -match 'WinRM' -or $PsItem.Name -match 'Runspace') } | Select-Object -First 1
                 }
@@ -138,7 +138,10 @@ function Install-DisaPatch {
                 Get-Module -ListAvailable xWindowsUpdate
             }
 
-            if (-not $hasxhotfixmodule) {
+            if ($hasxhotfixmodule) {
+                Write-PSFMessage -Level Verbose -Message "xWindowsUpdate found on $computer"
+            } else {
+                Write-PSFMessage -Level Verbose -Message "xWindowsUpdate not found on $computer, attempting to install it"
                 try {
                     # Copy xWindowsUpdate to Program Files. The module is pretty much required to be in the PS Modules directory.
                     $oldpref = $ProgressPreference
@@ -148,194 +151,215 @@ function Install-DisaPatch {
                     }
                     $null = Copy-Item -Path "$script:ModuleRoot\library\xWindowsUpdate" -Destination "$programfiles\WindowsPowerShell\Modules\xWindowsUpdate" -ToSession $remotesession -Recurse -Force
                     $ProgressPreference = $oldpref
+
+                    Write-PSFMessage -Level Verbose -Message "xWindowsUpdate installed successfully on $computer"
                 } catch {
                     Stop-PSFFunction -EnableException:$EnableException -Message "Couldn't auto-install xHotfix on $computer. Please Install-Module xWindowsUpdate on $computer to continue." -Continue
                 }
             }
 
-            if ($PSBoundParameters.FilePath) {
-                $remotefileexists = Invoke-PSFCommand -ComputerName $computer -Credential $Credential -ArgumentList $FilePath -ScriptBlock {
-                    Get-ChildItem -Path $args -ErrorAction SilentlyContinue
-                }
-            }
-
-            if (-not $remotefileexists) {
-                if ($FilePath) {
-                    # try really hard to find it locally
-                    $updatefile = Get-ChildItem -Path $FilePath -ErrorAction SilentlyContinue
-                    if (-not $updatefile) {
-                        $filename = Split-Path -Path $FilePath -Leaf
-                        $updatefile = Get-ChildItem -Path "$home\Downloads\$filename" -ErrorAction SilentlyContinue
-                    }
-                }
-
-                if (-not $PSBoundParameters.FilePath) {
-                    $FilePath = "$remotehome\Downloads\$(Split-Path -Leaf $updateFile)"
+            foreach ($file in $FilePath) {
+                $updatefile = Get-ChildItem -Path $file -ErrorAction SilentlyContinue
+                if ($computer.IsLocalhost) {
+                    $remotefile = $updatefile
+                } else {
+                    $remotefile = "$remotehome\Downloads\$(Split-Path -Leaf $updateFile)"
                 }
 
                 # ignore if it's on a file server
-                if (($updatefile -and -not "$($PSBoundParameters.FilePath)".StartsWith("\\")) -or $computer -ne $env:ComputerName) {
+                if (-not "$($PSBoundParameters.FilePath)".StartsWith("\\") -and -not $computer.IsLocalhost) {
+                    Write-PSFMessage -Level Verbose -Message "Not on file server"
                     try {
-                        $exists = Invoke-PSFCommand -ComputerName $computer -Credential $Credential -ArgumentList $FilePath -ScriptBlock {
+                        $exists = Invoke-PSFCommand -ComputerName $computer -Credential $Credential -ArgumentList $remotefile -ScriptBlock {
                             Get-ChildItem -Path $args -ErrorAction SilentlyContinue
                         }
                         if (-not $exists) {
-                            $null = Copy-Item -Path $updatefile -Destination $FilePath -ToSession $remotesession
+                            $null = Copy-Item -Path $updatefile -Destination $remotefile -ToSession $remotesession -ErrorAction Stop
                         }
                     } catch {
-                        $null = Invoke-PSFCommand -ComputerName $computer -Credential $Credential -ArgumentList $FilePath -ScriptBlock {
+                        $null = Invoke-PSFCommand -ComputerName $computer -Credential $Credential -ArgumentList $file -ScriptBlock {
                             Remove-Item $args -Force -ErrorAction SilentlyContinue
                         }
-                        Stop-PSFFunction -EnableException:$EnableException -Message "Could not copy $updatefile to $filepath and no file was specified" -Continue
+                        Stop-PSFFunction -EnableException:$EnableException -Message "Could not copy $updatefile to $file and no file was specified" -Continue
                     }
                 } else {
                     Stop-PSFFunction -EnableException:$EnableException -Message "Could not find $HotfixId and no file was specified" -Continue
                 }
-            }
 
-            # if user doesnt add kb, try to find it for them from the provided filename
-            if (-not $PSBoundParameters.HotfixId) {
-                $HotfixId = $FilePath.ToUpper() -split "\-" | Where-Object { $psitem.Startswith("KB") }
-                if (-not $HotfixId) {
-                    Stop-PSFFunction -EnableException:$EnableException -Message "Could not determine KB from $FilePath. Looked for '-kbnumber-'. Please provide a HotfixId."
-                    return
-                }
-            }
-
-            if ($FilePath.EndsWith("exe")) {
-                if (-not $ArgumentList) {
-                    if ($FilePath -match "sql") {
-                        $ArgumentList = "/action=patch /AllInstances /quiet /IAcceptSQLServerLicenseTerms"
-                    } else {
-                        $ArgumentList = "/install /quiet /notrestart"
+                Write-PSFMessage -Level Verbose -Message "Moving on"
+                if ($file.EndsWith("exe")) {
+                    if (-not $ArgumentList) {
+                        if ($file -match "sql") {
+                            $ArgumentList = "/action=patch /AllInstances /quiet /IAcceptSQLServerLicenseTerms"
+                        } else {
+                            $ArgumentList = "/install /quiet /notrestart"
+                        }
                     }
-                }
 
-                if (-not $Guid) {
-                    if ($InputObject) {
-                        $Guid = $PSBoundParameters.InputObject.Guid
-                        $Title = $PSBoundParameters.InputObject.Title
-                    } else {
-                        try {
-                            $cab = New-Object Microsoft.Deployment.Compression.Cab.Cabinfo $FilePath
-                            $temp = Get-PSFPath -Name Temp
-                            $null = $cab.UnpackFile("0","$temp\0.xml")
-                            $xml = [xml](Get-Content "$temp\0.xml")
-                            $Guid = ([guid]$xml.BurnManifest.Registration.Id).Guid
-                            $Title = (Get-Item $FilePath).VersionInfo.ProductName
-                        } catch {
-                            Stop-PSFFunction -EnableException:$EnableException -Message "Could not determine Guid from $FilePath. Please provide a Guid." -ErrorRecord $PSItem
+                    if (-not $Guid) {
+                        if ($InputObject) {
+                            $Guid = $PSBoundParameters.InputObject.Guid
+                            $Title = $PSBoundParameters.InputObject.Title
+                        } else {
+                            try {
+                                Write-PSFMessage -Level Verbose -Message "Guid not specifying, getting it from $($updatefile.FullName)"
+                                <#
+                                    It's better to just read from memory but I can't get this to work
+                                    $cab = New-Object Microsoft.Deployment.Compression.Cab.Cabinfo "C:\path\path.exe"
+                                    $file = New-Object Microsoft.Deployment.Compression.Cab.CabFileInfo($cab, "0")
+                                    $content = $file.OpenRead()
+                                #>
+                                $cab = New-Object Microsoft.Deployment.Compression.Cab.Cabinfo $updatefile.FullName
+                                $files = $cab.GetFiles("*")
+                                $index = $files | Where-Object Name -eq 0
+                                if (-not $index) {
+                                    $index = $files | Where-Object Name -match "KB.*.xml|PSFX.*.xml|ParameterInfo.xml|mediainfo.xml|none.xml"
+                                }
+                                if (-not $index) {
+                                    Stop-PSFFunction -EnableException:$EnableException -Message "Could not figure out the type of patch:  $updatefile"
+                                    return
+                                }
+                                $temp = Get-PSFPath -Name Temp
+                                $indexfilename = $index.Name
+                                $xmlfile = Join-Path -Path $temp -ChildPath "$($updatefile.BaseName).xml"
+                                $null = $cab.UnpackFile($indexfilename, $xmlfile)
+                                $xml = [xml](Get-Content -Path $xmlfile)
+                                $tempguid = $xml.BurnManifest.Registration.Id
+                                if (-not $tempguid -and $xml.MediaInfo.Properties.Property) {
+                                    $tempkb = ($xml.MediaInfo.Properties.Property | Where-Object Id -eq KBNumber).Value
+                                    $tempguid = "KB$tempkb"
+                                }
+                                $Guid = ([guid]$tempguid).Guid
+                                $Title = (Get-Item $updatefile).VersionInfo.ProductName
+                                Get-ChildItem -Path $xmlfile -ErrorAction SilentlyContinue | Remove-Item -Confirm:$false -ErrorAction SilentlyContinue
+                            } catch {
+                                Stop-PSFFunction -EnableException:$EnableException -Message "Could not determine Guid from $file. Please provide a Guid." -ErrorRecord $PSItem
+                                return
+                            }
+                        }
+                    }
+
+                    # this takes care of things like SQL Server updates
+
+                    $hotfix = @{
+                        Name       = 'Package'
+                        ModuleName = 'PSDesiredStateConfiguration'
+                        Property   = @{
+                            Ensure     = 'Present'
+                            ProductId  = $Guid
+                            Name       = $Title
+                            Path       = $remotefile
+                            Arguments  = $ArgumentList
+                            ReturnCode = 0, 3010
+                        }
+                    }
+                } else {
+                    # if user doesnt add kb, try to find it for them from the provided filename
+                    if (-not $PSBoundParameters.HotfixId) {
+                        $HotfixId = $file.ToUpper() -split "\-" | Where-Object { $psitem.Startswith("KB") }
+                        if (-not $HotfixId) {
+                            Stop-PSFFunction -EnableException:$EnableException -Message "Could not determine KB from $file. Looked for '-kbnumber-'. Please provide a HotfixId."
                             return
                         }
                     }
-                }
 
-                # this takes care of things like SQL Server updates
-                $hotfix = @{
-                    Name       = 'Package'
-                    ModuleName = 'PSDesiredStateConfiguration'
-                    Property   = @{
-                        Ensure     = 'Present'
-                        ProductId  = $Guid
-                        Name       = $Title
-                        Path       = $FilePath
-                        Arguments  = $ArgumentList
-                        ReturnCode = 0, 3010
-                    }
-                }
-            } else {
-                # this takes care of WSU files
-                $hotfix = @{
-                    Name       = 'xHotFix'
-                    ModuleName = 'xWindowsUpdate'
-                    Property   = @{
-                        Ensure = 'Present'
-                        Id     = $HotfixId
-                        Path   = $FilePath
-                    }
-                }
-                if ($PSDscRunAsCredential) {
-                    $hotfix.Property.PSDscRunAsCredential = $PSDscRunAsCredential
-                }
-            }
-
-            if ($PSCmdlet.ShouldProcess($computer, "Installing Hotfix $HotfixId from $FilePath")) {
-                try {
-                    Invoke-PSFCommand -ComputerName $computer -Credential $Credential -ScriptBlock {
-                        param (
-                            $Hotfix,
-                            $VerbosePreference,
-                            $ManualFileName
-                        )
-                        $PSDefaultParameterValues['*:ErrorAction'] = 'SilentlyContinue'
-                        $ErrorActionPreference = "Stop"
-
-                        if (-not (Get-Command Invoke-DscResource)) {
-                            throw "Invoke-DscResource not found on $env:ComputerName"
+                    # this takes care of WSU files
+                    $hotfix = @{
+                        Name       = 'xHotFix'
+                        ModuleName = 'xWindowsUpdate'
+                        Property   = @{
+                            Ensure = 'Present'
+                            Id     = $HotfixId
+                            Path   = $remotefile
                         }
-                        $null = Import-Module xWindowsUpdate -Force
-                        Write-Verbose -Message "Installing $($hotfix.property.id) from $($hotfix.property.path)"
-                        try {
-                            if (-not (Invoke-DscResource @hotfix -Method Test)) {
-                                Invoke-DscResource @hotfix -Method Set -ErrorAction Stop
+                    }
+                    if ($PSDscRunAsCredential) {
+                        $hotfix.Property.PSDscRunAsCredential = $PSDscRunAsCredential
+                    }
+                    $Title = $HotfixId
+                }
+
+                if ($PSCmdlet.ShouldProcess($computer, "Installing Hotfix $HotfixId from $file")) {
+                    try {
+                        Invoke-PSFCommand -ComputerName $computer -Credential $Credential -ScriptBlock {
+                            param (
+                                $Hotfix,
+                                $VerbosePreference,
+                                $ManualFileName
+                            )
+                            $PSDefaultParameterValues['*:ErrorAction'] = 'SilentlyContinue'
+                            $ErrorActionPreference = "Stop"
+
+                            if (-not (Get-Command Invoke-DscResource)) {
+                                throw "Invoke-DscResource not found on $env:ComputerName"
                             }
-                        } catch {
-                            switch ($message = "$_") {
-                                # some things can be ignored
-                                { $message -match "Serialized XML is nested too deeply" -or $message -match "Name does not match package details" } {
-                                    $null = 1
+                            $null = Import-Module xWindowsUpdate -Force
+                            Write-Verbose -Message "Installing $($hotfix.property.id) from $($hotfix.property.path)"
+                            try {
+                                if (-not (Invoke-DscResource @hotfix -Method Test)) {
+                                    Invoke-DscResource @hotfix -Method Set -ErrorAction Stop
                                 }
-                                { $message -match "2359302" } {
-                                    throw "Error 2359302: update is already installed on $env:ComputerName"
-                                }
-                                { $message -match "2042429437" } {
-                                    throw "Error -2042429437. Configuration is likely not correct. The requested features may not be installed or features are already at a higher patch level."
-                                }
-                                { $message -match "2068709375" } {
-                                    throw "Error -2068709375. The exit code suggests that something is corrupt. See if this tutorial helps:  http://www.sqlcoffee.com/Tips0026.htm"
-                                }
-                                { $message -match "2067919934" } {
-                                    throw "Error -2067919934 You likely need to reboot $env:ComputerName."
-                                }
-                                { $message -match "2147942402" } {
-                                    throw "System can't find the file specified for some reason."
-                                }
-                                default {
-                                    throw
+                            } catch {
+                                switch ($message = "$_") {
+                                    # some things can be ignored
+                                    { $message -match "Serialized XML is nested too deeply" -or $message -match "Name does not match package details" } {
+                                        $null = 1
+                                    }
+                                    { $message -match "2359302" } {
+                                        throw "Error 2359302: update is already installed on $env:ComputerName"
+                                    }
+                                    { $message -match "2042429437" } {
+                                        throw "Error -2042429437. Configuration is likely not correct. The requested features may not be installed or features are already at a higher patch level."
+                                    }
+                                    { $message -match "2068709375" } {
+                                        throw "Error -2068709375. The exit code suggests that something is corrupt. See if this tutorial helps: http://www.sqlcoffee.com/Tips0026.htm"
+                                    }
+                                    { $message -match "2067919934" } {
+                                        throw "Error -2067919934 You likely need to reboot $env:ComputerName."
+                                    }
+                                    { $message -match "2147942402" } {
+                                        throw "System can't find the file specified for some reason."
+                                    }
+                                    default {
+                                        throw
+                                    }
                                 }
                             }
+                        } -ArgumentList $hotfix, $VerbosePreference, $PSBoundParameters.FileName -ErrorAction Stop
+
+                        Write-Verbose -Message "Finished installing, checking status"
+                        $exists = Get-DisaInstalledSoftware -ComputerName $computer -Credential $Credential -Pattern $hotfix.property.id -IncludeHidden
+
+                        if ($exists.Summary -match "restart") {
+                            $status = "This update requires a restart"
+                        } else {
+                            $status = "Install successful"
                         }
-                    } -ArgumentList $hotfix, $VerbosePreference, $PSBoundParameters.FileName -ErrorAction Stop
-                    Write-Verbose -Message "Finished installing, checking status"
-                    $exists = Get-DisaInstalledSoftware -ComputerName $computer -Credential $Credential -Pattern $hotfix.property.id -IncludeHidden
 
-                    if ($exists.Summary -match "restart") {
-                        $status = "This update requires a restart"
-                    } else {
-                        $status = "Install successful"
-                    }
+                        [pscustomobject]@{
+                            ComputerName = $computer
+                            Title        = $Title
+                            ID           = $Guid
+                            Status       = $Status
+                        }
+                    } catch {
+                        if ("$PSItem" -match "Serialized XML is nested too deeply") {
+                            Write-PSFMessage -Level Verbose -Message "Serialized XML is nested too deeply. Forcing output."
+                            $exists = Get-DisaInstalledSoftware -ComputerName $computer -Credential $credential -HotfixId $hotfix.property.id
 
-                    [pscustomobject]@{
-                        ComputerName = $computer
-                        HotfixID     = $HotfixId
-                        Status       = $Status
-                    }
-                } catch {
-                    if ("$PSItem" -match "Serialized XML is nested too deeply") {
-                        Write-PSFMessage -Level Verbose -Message "Serialized XML is nested too deeply. Forcing output."
-                        $exists = Get-DisaInstalledSoftware -ComputerName $computer -Credential $credential -HotfixId $hotfix.property.id
-
-                        if ($exists) {
-                            [pscustomobject]@{
-                                ComputerName = $computer
-                                HotfixID     = $HotfixId
-                                Status       = "Successfully installed. A restart is now required."
+                            if ($exists) {
+                                [pscustomobject]@{
+                                    ComputerName = $computer
+                                    Title        = $Title
+                                    Id           = $HotfixId
+                                    Status       = "Successfully installed. A restart is now required."
+                                }
+                            } else {
+                                Stop-PSFFunction -Message "Failure on $computer" -ErrorRecord $_ -EnableException:$EnableException
                             }
                         } else {
                             Stop-PSFFunction -Message "Failure on $computer" -ErrorRecord $_ -EnableException:$EnableException
                         }
-                    } else {
-                        Stop-PSFFunction -Message "Failure on $computer" -ErrorRecord $_ -EnableException:$EnableException
                     }
                 }
             }
