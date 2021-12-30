@@ -32,7 +32,7 @@
         @{ ModuleName = 'PSFramework'; ModuleVersion = '1.0.19' }
     )
 
-    # Hello
+    # Add required assemblies
     RequiredAssemblies = @(
         "library/Microsoft.Deployment.Compression.Cab.dll",
         "library/Microsoft.Deployment.Compression.dll"
