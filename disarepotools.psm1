@@ -82,3 +82,6 @@ $availableTls = [enum]::GetValues('Net.SecurityProtocolType') | Where-Object { $
 $availableTls | ForEach-Object {
     [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor $_
 }
+
+$script:installedsoftware = @{}
+$script:hashotfixmodule = @{}
