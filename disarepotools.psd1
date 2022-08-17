@@ -6,7 +6,7 @@
 #
 @{
     # Version number of this module.
-    ModuleVersion     = '0.0.3'
+    ModuleVersion     = '0.0.4'
 
     # ID used to uniquely identify this module
     GUID              = '496a2ac3-856a-47f3-91a1-9514cbc4ef3a'
@@ -18,7 +18,7 @@
     CompanyName       = 'Chrissy LeMaire'
 
     # Copyright statement for this module
-    Copyright         = '2021 Chrissy LeMaire'
+    Copyright         = '2022 Chrissy LeMaire'
 
     # Description of the functionality provided by this module
     Description       = 'List and save files from the DISA patch repository'
